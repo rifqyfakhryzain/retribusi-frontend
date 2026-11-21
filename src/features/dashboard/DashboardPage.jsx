@@ -11,10 +11,12 @@ import {
   CardContent,
 } from "../../components/ui/Card";
 import kiosService from "../../services/kiosService";
+import retribusiService from "../../services/retribusiService";
+import socket from "../../services/socket";
+import DashboardLiveMap from "../../components/map/DashboardLiveMap";
 import {
   Building2,
   DollarSign,
-  Users,
   AlertTriangle,
   LogOut,
   RefreshCw,
@@ -27,6 +29,10 @@ import {
   Printer,
   X,
   Store,
+  Wifi,
+  Bell,
+  Clock,
+  Radio,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -39,6 +45,18 @@ export default function DashboardPage() {
   const [kiosError, setKiosError] = useState("");
   const [searchKios, setSearchKios] = useState("");
   const [filterLantai, setFilterLantai] = useState("ALL");
+
+  // State Monitoring Real-Time & WebSockets (Fase 6)
+  const [stats, setStats] = useState({
+    total_transaksi_lunas: 0,
+    total_nominal_terkumpul: 0,
+    total_fraud_ditolak: 0,
+  });
+  const [transactions, setTransactions] = useState([]);
+  const [isLoadingMonitoring, setIsLoadingMonitoring] = useState(false);
+  const [monitoringError, setMonitoringError] = useState("");
+  const [isSocketConnected, setIsSocketConnected] = useState(socket.connected);
+  const [realtimeNotification, setRealtimeNotification] = useState(null);
 
   // State Modal Preview QR
   const [selectedKios, setSelectedKios] = useState(null);
@@ -56,6 +74,7 @@ export default function DashboardPage() {
   const [addKiosError, setAddKiosError] = useState("");
   const [addKiosSuccess, setAddKiosSuccess] = useState("");
 
+  // Mengambil Data Kios
   const fetchKios = async () => {
     setIsLoadingKios(true);
     setKiosError("");
@@ -69,8 +88,101 @@ export default function DashboardPage() {
     }
   };
 
+  // Mengambil Data Statistik & Transaksi Real-time
+  const fetchMonitoringData = async () => {
+    setIsLoadingMonitoring(true);
+    setMonitoringError("");
+    try {
+      const [statsRes, transRes] = await Promise.all([
+        retribusiService.getStatistikHariIni(),
+        retribusiService.getAllTransactions(),
+      ]);
+
+      if (statsRes?.data) setStats(statsRes.data);
+      if (transRes?.data) setTransactions(transRes.data);
+    } catch (err) {
+      setMonitoringError(
+        err.response?.data?.message || err.message || "Gagal memuat data monitoring real-time"
+      );
+    } finally {
+      setIsLoadingMonitoring(false);
+    }
+  };
+
+  // Lifecycle Koneksi WebSocket Socket.io (Fase 6)
   useEffect(() => {
     fetchKios();
+    fetchMonitoringData();
+
+    // Listener Koneksi
+    const handleConnect = () => {
+      console.log("[Socket.io] Terhubung ke server secara live!");
+      setIsSocketConnected(true);
+    };
+
+    const handleDisconnect = () => {
+      console.log("[Socket.io] Terputus dari server!");
+      setIsSocketConnected(false);
+    };
+
+    // Sinkronisasi status awal jika soket sudah terhubung sebelum listener terdaftar
+    if (socket.connected) {
+      setIsSocketConnected(true);
+    }
+
+    // Listener Transaksi Baru dari Petugas Mobile HP
+    const handleTransaksiBaru = (payload) => {
+      const newTrx = payload.data;
+      if (!newTrx) return;
+
+      // 1. Tambahkan ke puncak daftar transaksi (Real-Time Prepend)
+      setTransactions((prev) => [newTrx, ...prev]);
+
+      // 2. Naikkan angka agregat secara real-time
+      setStats((prev) => ({
+        ...prev,
+        total_transaksi_lunas: (prev.total_transaksi_lunas || 0) + 1,
+        total_nominal_terkumpul:
+          (prev.total_nominal_terkumpul || 0) + Number(newTrx.nominal || 0),
+      }));
+
+      // 3. Tampilkan toast notifikasi siaran langsung
+      setRealtimeNotification({
+        type: "SUCCESS",
+        title: "Transaksi Setoran Masuk!",
+        message: `Kios ${newTrx.kode_kios} (${newTrx.nama_pemilik}) telah melunasi retribusi Rp ${Number(
+          newTrx.nominal
+        ).toLocaleString("id-ID")} [${newTrx.is_basement_bypass ? "Bypass Basement" : "Geofence Sah"}]`,
+        time: new Date().toLocaleTimeString("id-ID"),
+      });
+    };
+
+    // Listener Deteksi Peringatan Fraud
+    const handleFraudTerdeteksi = (payload) => {
+      setStats((prev) => ({
+        ...prev,
+        total_fraud_ditolak: (prev.total_fraud_ditolak || 0) + 1,
+      }));
+
+      setRealtimeNotification({
+        type: "FRAUD",
+        title: "Peringatan Anti-Fraud!",
+        message: payload.message || "Upaya penagihan di luar radius pasar atau sinyal lemah diblokir!",
+        time: new Date().toLocaleTimeString("id-ID"),
+      });
+    };
+
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("transaksi_baru", handleTransaksiBaru);
+    socket.on("fraud_terdeteksi", handleFraudTerdeteksi);
+
+    return () => {
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("transaksi_baru", handleTransaksiBaru);
+      socket.off("fraud_terdeteksi", handleFraudTerdeteksi);
+    };
   }, []);
 
   const handleCreateKios = async (e) => {
@@ -100,7 +212,6 @@ export default function DashboardPage() {
     try {
       const res = await kiosService.generateKios(newKiosForm);
       setAddKiosSuccess(`Kios ${res.data?.kode_kios} berhasil diterbitkan dengan QR Token aman!`);
-      // Reset form & reload
       setNewKiosForm({
         kode_kios: "",
         nama_pemilik: "",
@@ -186,7 +297,7 @@ export default function DashboardPage() {
               Selamat Datang di Dasbor Kontrol, {user?.nama}!
             </h2>
             <p className="text-pasar-100 text-sm mt-1 max-w-xl">
-              Pantau seluruh pergerakan setoran retribusi petugas di lapangan dan kelola stiker QR kriptografi pedagang.
+              Pantau seluruh pergerakan setoran retribusi petugas di lapangan detik itu juga dan kelola stiker QR kriptografi pedagang.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -194,9 +305,10 @@ export default function DashboardPage() {
               variant="secondary"
               size="sm"
               icon={RefreshCw}
-              className="bg-white/10 hover:bg-white/20 text-white border-0"
+              className="bg-white/10 hover:bg-white/20 text-white border-0 cursor-pointer"
               onClick={() => {
                 fetchKios();
+                fetchMonitoringData();
               }}
             >
               Segarkan Data
@@ -204,22 +316,62 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Notifikasi Siaran Real-Time Pop-up Banner */}
+        {realtimeNotification && (
+          <div
+            className={`p-4 rounded-2xl border flex items-start justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 ${
+              realtimeNotification.type === "SUCCESS"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                : "bg-red-50 border-red-200 text-red-900"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  realtimeNotification.type === "SUCCESS"
+                    ? "bg-emerald-200 text-emerald-800"
+                    : "bg-red-200 text-red-800"
+                }`}
+              >
+                <Bell className="h-5 w-5 animate-bounce" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm">
+                    {realtimeNotification.title}
+                  </span>
+                  <span className="text-[11px] opacity-75">
+                    ({realtimeNotification.time})
+                  </span>
+                </div>
+                <p className="text-xs mt-0.5">{realtimeNotification.message}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setRealtimeNotification(null)}
+              className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {/* Tab Navigation */}
         <div className="flex border-b border-gray-200 space-x-6 text-sm font-semibold">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`pb-3 border-b-2 flex items-center gap-2 transition-colors ${
+            className={`pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
               activeTab === "overview"
                 ? "border-pasar-600 text-pasar-700"
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
             <Activity className="h-4 w-4" />
-            Monitoring Real-Time
+            Monitoring Real-Time (Fase 6)
           </button>
           <button
             onClick={() => setActiveTab("kios")}
-            className={`pb-3 border-b-2 flex items-center gap-2 transition-colors ${
+            className={`pb-3 border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
               activeTab === "kios"
                 ? "border-pasar-600 text-pasar-700"
                 : "border-transparent text-gray-500 hover:text-gray-700"
@@ -233,10 +385,18 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* TAB 1: OVERVIEW & LIVE MONITORING */}
+        {/* TAB 1: OVERVIEW & LIVE MONITORING (FASE 6) */}
         {activeTab === "overview" && (
           <div className="space-y-6">
-            {/* Ringkasan Statistik */}
+            {monitoringError && (
+              <Alert
+                variant="error"
+                message={monitoringError}
+                onClose={() => setMonitoringError("")}
+              />
+            )}
+
+            {/* Ringkasan Statistik Real-Time */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Kartu 1: Total Retribusi */}
               <Card>
@@ -246,10 +406,11 @@ export default function DashboardPage() {
                       Total Setoran Hari Ini
                     </p>
                     <p className="text-2xl font-bold text-gray-900 mt-1">
-                      Rp 1.450.000
+                      Rp {Number(stats.total_nominal_terkumpul || 0).toLocaleString("id-ID")}
                     </p>
                     <span className="text-xs text-pasar-600 font-medium inline-flex items-center gap-1 mt-1">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> +14.2% dari target
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {stats.total_transaksi_lunas || 0} Transaksi Lunas
                     </span>
                   </div>
                   <div className="h-12 w-12 rounded-xl bg-pasar-50 text-pasar-600 flex items-center justify-center">
@@ -283,16 +444,28 @@ export default function DashboardPage() {
                 <CardContent className="p-5 flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Deteksi Fraud (GPS / QR)
+                      Deteksi Fraud (Anti-Pungli)
                     </p>
-                    <p className="text-2xl font-bold text-emerald-600 mt-1">
-                      0 Pelanggaran
+                    <p
+                      className={`text-2xl font-bold mt-1 ${
+                        stats.total_fraud_ditolak > 0 ? "text-red-600" : "text-emerald-600"
+                      }`}
+                    >
+                      {stats.total_fraud_ditolak || 0} Ditolak
                     </p>
                     <span className="text-xs text-gray-500 mt-1 block">
-                      Semua transaksi lolos HMAC
+                      {stats.total_fraud_ditolak > 0
+                        ? "Upaya penagihan ilegal diblokir"
+                        : "Semua penagihan sesuai radius"}
                     </span>
                   </div>
-                  <div className="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <div
+                    className={`h-12 w-12 rounded-xl flex items-center justify-center ${
+                      stats.total_fraud_ditolak > 0
+                        ? "bg-red-50 text-red-600"
+                        : "bg-emerald-50 text-emerald-600"
+                    }`}
+                  >
                     <ShieldCheck className="h-6 w-6" />
                   </div>
                 </CardContent>
@@ -303,93 +476,161 @@ export default function DashboardPage() {
                 <CardContent className="p-5 flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Socket.io Server
+                      Status Socket.io
                     </p>
-                    <p className="text-lg font-bold text-amber-600 mt-1">
-                      Siap di Fase 6
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="relative flex h-3 w-3">
+                        {isSocketConnected && (
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        )}
+                        <span
+                          className={`relative inline-flex rounded-full h-3 w-3 ${
+                            isSocketConnected ? "bg-emerald-500" : "bg-red-500"
+                          }`}
+                        ></span>
+                      </span>
+                      <p
+                        className={`text-lg font-bold ${
+                          isSocketConnected ? "text-emerald-700" : "text-red-600"
+                        }`}
+                      >
+                        {isSocketConnected ? "Live Terhubung" : "Terputus"}
+                      </p>
+                    </div>
                     <span className="text-xs text-gray-500 mt-1 block">
                       Sinkronisasi instan &lt; 2 detik
                     </span>
                   </div>
-                  <div className="h-12 w-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                    <AlertTriangle className="h-6 w-6" />
+                  <div
+                    className={`h-12 w-12 rounded-xl flex items-center justify-center ${
+                      isSocketConnected
+                        ? "bg-emerald-50 text-emerald-600"
+                        : "bg-red-50 text-red-600"
+                    }`}
+                  >
+                    <Wifi className="h-6 w-6" />
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Tabel Penagihan Terkini */}
+            {/* Peta Interaktif Spasial Real-Time (Leaflet OpenStreetMap) */}
+            <DashboardLiveMap transactions={transactions} />
+
+            {/* Tabel Penagihan Terkini (Real-Time Live Table) */}
             <Card>
-              <CardHeader>
-                <CardTitle>Log Transaksi Terakhir (Live Monitoring)</CardTitle>
-                <CardDescription>
-                  Riwayat transaksi penagihan petugas lapangan di Pasar Cicalengka
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Radio className="h-5 w-5 text-emerald-500 animate-pulse" />
+                    Log Transaksi Terakhir (Live Monitoring)
+                  </CardTitle>
+                  <CardDescription>
+                    Pembaruan detik itu juga secara otomatis tanpa refresh saat petugas menekan konfirmasi di HP
+                  </CardDescription>
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-pasar-100 text-pasar-800">
+                  {transactions.length} Transaksi Tercatat
+                </span>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-gray-700">
-                    <thead className="bg-gray-50 text-xs text-gray-500 uppercase border-b border-gray-100 font-semibold">
-                      <tr>
-                        <th className="px-6 py-3.5">ID Kios</th>
-                        <th className="px-6 py-3.5">Nama Pedagang</th>
-                        <th className="px-6 py-3.5">Zona / Lantai</th>
-                        <th className="px-6 py-3.5">Nominal</th>
-                        <th className="px-6 py-3.5">Status Lokasi (Geofence)</th>
-                        <th className="px-6 py-3.5">Status Tagihan</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      <tr className="hover:bg-gray-50/70">
-                        <td className="px-6 py-4 font-mono font-semibold text-gray-900">
-                          K-LT1-01
-                        </td>
-                        <td className="px-6 py-4">Bapak Suhendar (Sayur Mayur)</td>
-                        <td className="px-6 py-4">Lantai 1 - Blok Sayur</td>
-                        <td className="px-6 py-4 font-semibold text-gray-900">
-                          Rp 5.000
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                            <CheckCircle2 className="h-3 w-3" /> Valid (Radius 2m)
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pasar-100 text-pasar-800">
-                            LUNAS
-                          </span>
-                        </td>
-                      </tr>
-                      <tr className="hover:bg-gray-50/70">
-                        <td className="px-6 py-4 font-mono font-semibold text-gray-900">
-                          K-BSM-01
-                        </td>
-                        <td className="px-6 py-4">Ibu Hj. Siti (Daging Ayam)</td>
-                        <td className="px-6 py-4">Basement - Blok Basah</td>
-                        <td className="px-6 py-4 font-semibold text-gray-900">
-                          Rp 10.000
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            <CheckCircle2 className="h-3 w-3" /> Bypass Basement
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pasar-100 text-pasar-800">
-                            LUNAS
-                          </span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                {isLoadingMonitoring ? (
+                  <div className="text-center py-12">
+                    <RefreshCw className="h-8 w-8 text-pasar-600 animate-spin mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">Memuat log transaksi real-time...</p>
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400 text-sm">
+                    <Clock className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    Belum ada riwayat transaksi setoran hari ini.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-gray-700">
+                      <thead className="bg-gray-50 text-xs text-gray-500 uppercase border-b border-gray-100 font-semibold">
+                        <tr>
+                          <th className="px-6 py-3.5">ID Kios</th>
+                          <th className="px-6 py-3.5">Nama Pedagang</th>
+                          <th className="px-6 py-3.5">Petugas Penagih</th>
+                          <th className="px-6 py-3.5">Zona / Lantai</th>
+                          <th className="px-6 py-3.5">Nominal</th>
+                          <th className="px-6 py-3.5">Status Spasial (Geofence)</th>
+                          <th className="px-6 py-3.5">Status</th>
+                          <th className="px-6 py-3.5">Waktu</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {transactions.map((trx) => (
+                          <tr
+                            key={trx.id}
+                            className="hover:bg-gray-50/80 transition-colors"
+                          >
+                            <td className="px-6 py-4 font-mono font-bold text-gray-900">
+                              {trx.kode_kios}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="font-semibold text-gray-800">
+                                {trx.nama_pemilik}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {trx.jenis_dagangan}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-xs font-medium text-gray-700">
+                              {trx.petugas || "Petugas Lapangan"}
+                            </td>
+                            <td className="px-6 py-4 text-xs">
+                              {trx.lantai}
+                            </td>
+                            <td className="px-6 py-4 font-bold text-pasar-700">
+                              Rp {Number(trx.nominal).toLocaleString("id-ID")}
+                            </td>
+                            <td className="px-6 py-4">
+                              {trx.is_basement_bypass ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  <CheckCircle2 className="h-3 w-3" /> Bypass Basement
+                                </span>
+                              ) : trx.is_geofence_valid ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                  <CheckCircle2 className="h-3 w-3" /> Geofence Sah
+                                  {trx.accuracy ? ` (±${Math.round(trx.accuracy)}m)` : ""}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  <AlertTriangle className="h-3 w-3" /> Luar Radius Pasar
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              {trx.status === "LUNAS" ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                                  LUNAS
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                  DITOLAK
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-xs text-gray-500 font-mono">
+                              {new Date(trx.created_at).toLocaleTimeString("id-ID", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                              })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
         )}
 
-        {/* TAB 2: KATALOG KIOS & CETAK QR STIKER */}
+        {/* TAB 2: KATALOG KIOS & CETAK QR STIKER (FASE 3) */}
         {activeTab === "kios" && (
           <div className="space-y-6">
             {kiosError && <Alert type="error">{kiosError}</Alert>}
