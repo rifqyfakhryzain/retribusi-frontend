@@ -7,6 +7,8 @@ import Html5QrScanner from "../../components/scanner/Html5QrScanner";
 import useGeolocation from "../../hooks/useGeolocation";
 import kiosService from "../../services/kiosService";
 import retribusiService from "../../services/retribusiService";
+import OfficerRadarMap from "../../components/map/OfficerRadarMap";
+import { evaluateOfficerLocation } from "../../utils/geofence";
 import {
   QrCode,
   MapPin,
@@ -18,6 +20,7 @@ import {
   RefreshCw,
   Clock,
   X,
+  Compass,
 } from "lucide-react";
 
 export default function ScannerPage() {
@@ -40,6 +43,13 @@ export default function ScannerPage() {
 
   // Riwayat Kios yang Berhasil Dipindai Sesi Ini
   const [sessionScans, setSessionScans] = useState([]);
+
+  // Evaluasi Geofencing Status Keberadaan Petugas (Radar UI)
+  const locationStatus = evaluateOfficerLocation(
+    location?.latitude,
+    location?.longitude,
+    location?.accuracy
+  );
 
   // Ambil posisi GPS awal saat halaman pertama kali dibuka
   useEffect(() => {
@@ -279,7 +289,7 @@ export default function ScannerPage() {
           />
         )}
 
-        {/* Status Sensor GPS Satelit (Geofencing Indicator) */}
+        {/* Status Sensor GPS Satelit & Radar Geofencing */}
         <Card className="border-gray-200 bg-white shadow-sm overflow-hidden">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -287,16 +297,14 @@ export default function ScannerPage() {
                 <div
                   className={`h-3 w-3 rounded-full ${
                     location
-                      ? accuracyQuality === "good"
+                      ? locationStatus.isAllowed
                         ? "bg-emerald-500 animate-pulse"
-                        : accuracyQuality === "medium"
-                        ? "bg-amber-500"
-                        : "bg-red-500"
+                        : "bg-red-500 animate-pulse"
                       : "bg-gray-400"
                   }`}
                 />
                 <span className="text-xs font-bold uppercase tracking-wider text-gray-700">
-                  Sensor GPS Satelit
+                  Radar Geofence Satelit
                 </span>
               </div>
 
@@ -313,7 +321,34 @@ export default function ScannerPage() {
               </button>
             </div>
 
-            {/* Nilai Koordinat GPS */}
+            {/* Banner Status Posisi Petugas Saat Ini */}
+            <div
+              className={`p-3 rounded-xl border flex items-start gap-2.5 text-xs ${
+                locationStatus.badgeColor === "emerald"
+                  ? "bg-emerald-50/90 border-emerald-200 text-emerald-900"
+                  : locationStatus.badgeColor === "blue"
+                  ? "bg-blue-50/90 border-blue-200 text-blue-900"
+                  : locationStatus.badgeColor === "red"
+                  ? "bg-red-50/90 border-red-200 text-red-900"
+                  : "bg-gray-50 border-gray-200 text-gray-700"
+              }`}
+            >
+              <div className="shrink-0 mt-0.5">
+                {locationStatus.isAllowed ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-bold">{locationStatus.title}</p>
+                <p className="text-[11px] opacity-80 mt-0.5">
+                  {locationStatus.message}
+                </p>
+              </div>
+            </div>
+
+            {/* Nilai Koordinat GPS & Indikator Sinyal */}
             {location ? (
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center justify-between text-xs">
                 <div>
@@ -356,6 +391,19 @@ export default function ScannerPage() {
                 </p>
               </div>
             )}
+
+            {/* Mini-Map Interaktif Petugas (OpenStreetMap + Leaflet) */}
+            <div className="pt-1">
+              <p className="text-[11px] font-bold text-gray-600 mb-1.5 flex items-center gap-1">
+                <Compass className="h-3 w-3 text-pasar-600" />
+                Peta Posisi &amp; Poligon Pasar Cicalengka:
+              </p>
+              <OfficerRadarMap
+                location={location}
+                accuracyQuality={accuracyQuality}
+                isAllowed={locationStatus.isAllowed}
+              />
+            </div>
           </CardContent>
         </Card>
 
