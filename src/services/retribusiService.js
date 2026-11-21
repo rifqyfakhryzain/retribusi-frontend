@@ -1,18 +1,12 @@
 import api from "./api";
 
 /**
- * Service Modul Retribusi, Geofencing & Setoran (Fase 5)
+ * Service Modul Retribusi, Geofencing & Setoran (Fase 5 & 6)
  */
 export const retribusiService = {
   /**
    * Menyetorkan pembayaran retribusi lapak kios ke database Express & Neon DB
-   * Memvalidasi digital signature, akurasi sinyal satelit, dan komputasi spasial Ray-Casting
-   * 
-   * @param {Object} data
-   * @param {string} data.qr_token - Token Base64 HMAC lapak kios
-   * @param {number} data.latitude - Titik latitude satelit saat scan
-   * @param {number} data.longitude - Titik longitude satelit saat scan
-   * @param {number} data.accuracy - Radius akurasi satelit (± meter)
+   * @param {Object} data - { qr_token, latitude, longitude, accuracy }
    * @returns {Promise<Object>} Data transaksi sah
    */
   async bayarRetribusi({ qr_token, latitude, longitude, accuracy }) {
@@ -31,6 +25,15 @@ export const retribusiService = {
    */
   async getRiwayatPetugas() {
     const response = await api.get("/retribusi/riwayat");
+    return response.data;
+  },
+
+  /**
+   * Mengambil seluruh log transaksi untuk Dasbor Monitoring Real-Time (Admin UPTD)
+   * @returns {Promise<Object>}
+   */
+  async getAllTransactions() {
+    const response = await api.get("/retribusi/semua");
     return response.data;
   },
 
