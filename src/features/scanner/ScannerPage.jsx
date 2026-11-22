@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import Button from "../../components/ui/Button";
 import Alert from "../../components/ui/Alert";
-import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/Card";
 import Html5QrScanner from "../../components/scanner/Html5QrScanner";
 import useGeolocation from "../../hooks/useGeolocation";
 import kiosService from "../../services/kiosService";
@@ -14,13 +13,12 @@ import {
   MapPin,
   LogOut,
   ShieldCheck,
-  User,
-  AlertTriangle,
   CheckCircle2,
+  AlertTriangle,
   RefreshCw,
   Clock,
   X,
-  Compass,
+  Radio,
 } from "lucide-react";
 
 export default function ScannerPage() {
@@ -29,36 +27,33 @@ export default function ScannerPage() {
     location,
     error: geoError,
     isLoading: isGeoLoading,
-    accuracyQuality,
     getCurrentPosition,
   } = useGeolocation();
 
   // State Verifikasi & Pemrosesan
   const [isProcessing, setIsProcessing] = useState(false);
-  const [scanResult, setScanResult] = useState(null); // Data kios dari backend
-  const [currentQrToken, setCurrentQrToken] = useState(""); // Token mentah QR
-  const [scannedGps, setScannedGps] = useState(null); // GPS pada saat scan
+  const [scanResult, setScanResult] = useState(null);
+  const [currentQrToken, setCurrentQrToken] = useState("");
+  const [scannedGps, setScannedGps] = useState(null);
   const [fraudWarning, setFraudWarning] = useState("");
   const [successPaymentMessage, setSuccessPaymentMessage] = useState("");
 
   // Riwayat Kios yang Berhasil Dipindai Sesi Ini
   const [sessionScans, setSessionScans] = useState([]);
 
-  // Evaluasi Geofencing Status Keberadaan Petugas (Radar UI)
+  // Evaluasi Geofencing Status Keberadaan Petugas
   const locationStatus = evaluateOfficerLocation(
     location?.latitude,
     location?.longitude,
     location?.accuracy
   );
 
-  // Ambil posisi GPS awal saat halaman pertama kali dibuka
   useEffect(() => {
     getCurrentPosition().catch((err) => {
       console.warn("GPS awal belum aktif:", err.message);
     });
   }, [getCurrentPosition]);
 
-  // Ambil riwayat transaksi resmi hari ini dari database backend
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -93,24 +88,19 @@ export default function ScannerPage() {
     fetchHistory();
   }, []);
 
-  /**
-   * Handler saat kamera mendeteksi QR Code
-   * Mengekstrak token dan menarik titik GPS pada milidetik yang sama
-   */
   const handleQrDetected = async (decodedText) => {
     if (isProcessing) return;
 
     setIsProcessing(true);
     setFraudWarning("");
     setSuccessPaymentMessage("");
+    setCurrentQrToken(decodedText);
 
-    // Feedback getar ponsel (haptic feedback)
     if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(100);
+      navigator.vibrate(80);
     }
 
     try {
-      // 1. Tarik GPS tepat pada milidetik pemindaian QR
       let currentCoords = null;
       try {
         currentCoords = await getCurrentPosition();
@@ -119,14 +109,8 @@ export default function ScannerPage() {
       }
       setScannedGps(currentCoords);
 
-      // 2. Simpan token QR mentah untuk validasi setoran Fase 5
-      setCurrentQrToken(decodedText);
-
-      // 3. Verifikasi tanda tangan digital HMAC ke server backend
       const response = await kiosService.verifyQr(decodedText);
       const verifiedKios = response.data;
-
-      // 4. Tampilkan modal hasil verifikasi ke petugas
       setScanResult(verifiedKios);
     } catch (err) {
       const errorMessage =
@@ -143,9 +127,6 @@ export default function ScannerPage() {
     }
   };
 
-  /**
-   * Konfirmasi Pelunasan Retribusi (Fase 5: Validasi Geofencing & Database Commit)
-   */
   const handleConfirmPayment = async () => {
     if (!scanResult || !currentQrToken) return;
 
@@ -154,33 +135,25 @@ export default function ScannerPage() {
     setSuccessPaymentMessage("");
 
     try {
-      // Pastikan ada titik GPS saat konfirmasi
       let coords = scannedGps || location;
       if (!coords) {
         try {
           coords = await getCurrentPosition();
           setScannedGps(coords);
-        } catch (gpsErr) {
-          console.warn("Gagal menarik GPS saat konfirmasi:", gpsErr);
+        } catch (e) {
+          console.warn("Gagal mendapatkan koordinat terbaru:", e);
         }
-      }
-
-      if (!coords && !scanResult.is_basement) {
-        throw new Error(
-          "Sensor GPS belum mendeteksi lokasi Anda. Harap izinkan dan aktifkan GPS untuk verifikasi wilayah pasar!"
-        );
       }
 
       const payload = {
         qr_token: currentQrToken,
-        latitude: coords ? coords.latitude : 0,
-        longitude: coords ? coords.longitude : 0,
-        accuracy: coords ? coords.accuracy : 0,
+        latitude: coords?.latitude || 0,
+        longitude: coords?.longitude || 0,
+        accuracy: coords?.accuracy || 0,
       };
 
-      // Panggil backend Express: POST /api/retribusi/bayar
-      const response = await retribusiService.bayarRetribusi(payload);
-      const trx = response.data;
+      const res = await retribusiService.bayarRetribusi(payload);
+      const trx = res.data;
 
       const newRecord = {
         id: trx.id,
@@ -205,16 +178,15 @@ export default function ScannerPage() {
       setSessionScans((prev) => [newRecord, ...prev]);
 
       const flagInfo = trx.is_basement_bypass
-        ? "✨ Bypass Basement (Blindspot)"
-        : "📍 Geofence Pasar Sah";
+        ? "Bypass Basement Sah"
+        : "Geofence Valid";
 
       setSuccessPaymentMessage(
-        `Retribusi kios ${trx.kode_kios} (Rp ${trx.nominal.toLocaleString(
+        `Retribusi ${trx.kode_kios} (Rp ${trx.nominal.toLocaleString(
           "id-ID"
-        )}) BERHASIL DISAHKAN & DISETORKAN! (${flagInfo})`
+        )}) BERHASIL DISAHKAN (${flagInfo})`
       );
 
-      // Reset modal dan state scan
       setScanResult(null);
       setCurrentQrToken("");
     } catch (err) {
@@ -233,366 +205,299 @@ export default function ScannerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Top Navbar Petugas */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-20 px-4 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-pasar-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      {/* Top Navbar Petugas - Nuansa Hijau Institusional */}
+      <header className="bg-emerald-800 border-b border-emerald-700 text-white sticky top-0 z-20 px-4 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded bg-emerald-900 text-emerald-100 flex items-center justify-center font-mono font-bold text-sm border border-emerald-600 shadow-xs">
             PC
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-gray-900 leading-tight">
+              <h1 className="text-xs font-bold uppercase tracking-wider text-emerald-50">
                 UPTD Pasar Cicalengka
               </h1>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold bg-emerald-900/90 text-emerald-200 border border-emerald-600">
                 PETUGAS
               </span>
             </div>
-            <p className="text-xs text-gray-500 flex items-center gap-1">
-              <User className="h-3 w-3" />
-              {user?.nama || "Petugas Lapangan"}
+            <p className="text-[11px] text-emerald-200 font-mono mt-0.5">
+              Operator: {user?.nama || "Petugas Lapangan"}
             </p>
           </div>
         </div>
 
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           icon={LogOut}
           onClick={logout}
-          className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+          className="bg-emerald-900 hover:bg-emerald-700 text-emerald-100 border-emerald-700 text-xs py-1 px-2.5"
         >
           Keluar
         </Button>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-lg w-full mx-auto p-4 space-y-4">
-        {/* Notifikasi Sukses Bayar */}
+      <main className="flex-1 max-w-lg w-full mx-auto p-3.5 space-y-3">
+        {/* Notifikasi Sukses */}
         {successPaymentMessage && (
           <Alert
             variant="success"
-            title="Penagihan Berhasil"
+            title="Transaksi Berhasil Diterbitkan"
             message={successPaymentMessage}
             onClose={() => setSuccessPaymentMessage("")}
           />
         )}
 
-        {/* Notifikasi Peringatan Fraud Anti-Pungli */}
+        {/* Notifikasi Peringatan Fraud */}
         {fraudWarning && (
           <Alert
             variant="error"
-            title="Peringatan Fraud Terdeteksi!"
+            title="Peringatan Validasi Sistem"
             message={fraudWarning}
             onClose={() => setFraudWarning("")}
           />
         )}
 
-        {/* Status Sensor GPS Satelit & Radar Geofencing */}
-        <Card className="border-gray-200 bg-white shadow-sm overflow-hidden">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`h-3 w-3 rounded-full ${
-                    location
-                      ? locationStatus.isAllowed
-                        ? "bg-emerald-500 animate-pulse"
-                        : "bg-red-500 animate-pulse"
-                      : "bg-gray-400"
-                  }`}
-                />
-                <span className="text-xs font-bold uppercase tracking-wider text-gray-700">
-                  Radar Geofence Satelit
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => getCurrentPosition()}
-                disabled={isGeoLoading}
-                className="text-xs text-pasar-600 hover:text-pasar-700 font-semibold flex items-center gap-1 cursor-pointer"
-              >
-                <RefreshCw
-                  className={`h-3 w-3 ${isGeoLoading ? "animate-spin" : ""}`}
-                />
-                Perbarui Titik
-              </button>
+        {/* Status Telemetri GPS & Radar Geofence */}
+        <div className="rounded-lg border border-emerald-200 bg-white shadow-xs overflow-hidden">
+          <div className="px-3.5 py-2.5 bg-emerald-800 text-white flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${
+                  location
+                    ? locationStatus.isAllowed
+                      ? "bg-emerald-300"
+                      : "bg-red-300"
+                    : "bg-emerald-200"
+                }`}
+              />
+              <span className="font-mono font-bold tracking-wider text-[11px] uppercase text-emerald-100">
+                Status Spasial Satelit
+              </span>
             </div>
 
-            {/* Banner Status Posisi Petugas Saat Ini */}
+            <button
+              type="button"
+              onClick={() => getCurrentPosition()}
+              disabled={isGeoLoading}
+              className="text-[11px] font-mono text-emerald-100 hover:text-white flex items-center gap-1 cursor-pointer bg-emerald-900 px-2 py-0.5 rounded border border-emerald-600 transition-colors"
+            >
+              <RefreshCw className={`h-3 w-3 ${isGeoLoading ? "animate-spin" : ""}`} />
+              Sinkron GPS
+            </button>
+          </div>
+
+          <div className="p-3 space-y-2.5">
+            {/* Status Geofence Box */}
             <div
-              className={`p-3 rounded-xl border flex items-start gap-2.5 text-xs ${
-                locationStatus.badgeColor === "emerald"
-                  ? "bg-emerald-50/90 border-emerald-200 text-emerald-900"
-                  : locationStatus.badgeColor === "blue"
-                  ? "bg-blue-50/90 border-blue-200 text-blue-900"
-                  : locationStatus.badgeColor === "red"
-                  ? "bg-red-50/90 border-red-200 text-red-900"
-                  : "bg-gray-50 border-gray-200 text-gray-700"
+              className={`p-2.5 rounded border text-xs flex items-center justify-between ${
+                locationStatus.isAllowed
+                  ? "bg-emerald-50 border-emerald-300 text-emerald-950"
+                  : "bg-red-50 border-red-300 text-red-950"
               }`}
             >
-              <div className="shrink-0 mt-0.5">
+              <div className="flex items-center gap-2">
                 {locationStatus.isAllowed ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
                 ) : (
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertTriangle className="h-4 w-4 text-red-700 shrink-0" />
                 )}
-              </div>
-              <div className="flex-1">
-                <p className="font-bold">{locationStatus.title}</p>
-                <p className="text-[11px] opacity-80 mt-0.5">
-                  {locationStatus.message}
-                </p>
-              </div>
-            </div>
-
-            {/* Nilai Koordinat GPS & Indikator Sinyal */}
-            {location ? (
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center justify-between text-xs">
                 <div>
-                  <div className="flex items-center gap-1.5 font-mono text-gray-800">
-                    <MapPin className="h-3.5 w-3.5 text-pasar-600 shrink-0" />
-                    <span>
-                      {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-gray-500 mt-0.5 ml-5">
-                    Akurasi: ± {location.accuracy} meter
+                  <p className="font-bold uppercase tracking-tight text-[11px]">
+                    {locationStatus.title}
+                  </p>
+                  <p className="text-[10px] opacity-85 mt-0.2">
+                    {locationStatus.message}
                   </p>
                 </div>
+              </div>
+              <span className="font-mono font-bold text-xs shrink-0 px-2 py-0.5 rounded bg-white border border-current">
+                {locationStatus.isAllowed ? "SAH" : "DITOLAK"}
+              </span>
+            </div>
 
-                {/* Badge Kualitas Sinyal Satelit */}
+            {/* Nilai Koordinat & Akurasi */}
+            {location ? (
+              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono bg-emerald-50/40 p-2.5 rounded border border-emerald-200 text-slate-800">
                 <div>
-                  {accuracyQuality === "good" && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
-                      Sinyal Kuat (&lt;10m)
-                    </span>
-                  )}
-                  {accuracyQuality === "medium" && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800">
-                      Sinyal Sedang
-                    </span>
-                  )}
-                  {accuracyQuality === "poor" && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-800">
-                      Sinyal Lemah (&gt;20m)
-                    </span>
-                  )}
+                  <span className="text-slate-500 block text-[9px] uppercase font-semibold">Koordinat GPS:</span>
+                  <span className="font-bold text-emerald-950">
+                    {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500 block text-[9px] uppercase font-semibold">Akurasi Satelit:</span>
+                  <span className="font-bold text-emerald-950">
+                    ± {location.accuracy} meter
+                  </span>
                 </div>
               </div>
             ) : (
-              <div className="bg-amber-50 rounded-xl p-3 border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-                <p>
-                  {geoError ||
-                    "Menunggu akses sensor GPS. Pastikan izin lokasi telah diaktifkan di browser."}
-                </p>
+              <div className="p-2 bg-amber-50 rounded border border-amber-200 text-[11px] text-amber-800 flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                <span>{geoError || "Menunggu izin akses sensor satelit..."}</span>
               </div>
             )}
 
-            {/* Mini-Map Interaktif Petugas (OpenStreetMap + Leaflet) */}
-            <div className="pt-1">
-              <p className="text-[11px] font-bold text-gray-600 mb-1.5 flex items-center gap-1">
-                <Compass className="h-3 w-3 text-pasar-600" />
-                Peta Posisi &amp; Poligon Pasar Cicalengka:
-              </p>
-              <OfficerRadarMap
-                location={location}
-                accuracyQuality={accuracyQuality}
-                isAllowed={locationStatus.isAllowed}
-              />
+            {/* Radar Mini-Map */}
+            <OfficerRadarMap
+              location={location}
+              isAllowed={locationStatus.isAllowed}
+            />
+          </div>
+        </div>
+
+        {/* Viewfinder Kamera Pemindai QR */}
+        <div className="rounded-lg border border-emerald-200 bg-white shadow-xs overflow-hidden">
+          <div className="px-3.5 py-2.5 bg-emerald-50/70 border-b border-emerald-200 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-emerald-950">
+              <QrCode className="h-4 w-4 text-emerald-700" />
+              <span>PEMINDAI STIKER LAPAK</span>
             </div>
-          </CardContent>
-        </Card>
+            <span className="text-[10px] font-mono text-emerald-800 font-medium">
+              WebRTC Camera Engine
+            </span>
+          </div>
 
-        {/* Modul Kamera Scanner QR Code (html5-qrcode) */}
-        <Card className="border-gray-200 shadow-sm overflow-hidden">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-base flex items-center justify-center gap-2">
-              <QrCode className="h-5 w-5 text-pasar-600" />
-              Pemindai QR Code Lapak Pedagang
-            </CardTitle>
-            <p className="text-xs text-gray-500">
-              Arahkan kamera ke stiker QR HMAC terenkripsi yang tertempel di kios pasar
-            </p>
-          </CardHeader>
-
-          <CardContent className="pt-2">
+          <div className="p-3">
             <Html5QrScanner
               onScanSuccess={handleQrDetected}
               isPaused={isProcessing || Boolean(scanResult)}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Riwayat Penagihan Hari Ini (Mini Session Log) */}
-        <Card className="border-gray-200 shadow-sm">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                <Clock className="h-4 w-4 text-gray-500" />
-                Riwayat Sesi Ini
-              </CardTitle>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-pasar-100 text-pasar-800">
-                {sessionScans.length} Kios
-              </span>
+        {/* Log Riwayat Penagihan Sesi Ini */}
+        <div className="rounded-lg border border-emerald-200 bg-white shadow-xs overflow-hidden">
+          <div className="px-3.5 py-2.5 bg-emerald-50/70 border-b border-emerald-200 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-emerald-950">
+              <Clock className="h-4 w-4 text-emerald-700" />
+              <span>REKAPITULASI PENAGIHAN SESI INI</span>
             </div>
-          </CardHeader>
+            <span className="font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">
+              {sessionScans.length} Kios
+            </span>
+          </div>
 
-          <CardContent className="p-0">
+          <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto">
             {sessionScans.length === 0 ? (
-              <div className="p-6 text-center text-xs text-gray-400">
-                Belum ada kios yang ditagih pada sesi ini. Pindai stiker QR untuk memulai penagihan.
+              <div className="p-6 text-center text-xs text-slate-400 font-mono">
+                Belum ada transaksi pada sesi ini. Pindai stiker pedagang untuk mencatat retribusi.
               </div>
             ) : (
-              <div className="divide-y divide-gray-100 max-h-56 overflow-y-auto">
-                {sessionScans.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3.5 flex items-center justify-between hover:bg-gray-50 text-xs"
-                  >
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-bold text-gray-900">
-                          {item.kode_kios}
-                        </span>
-                        <span className="text-gray-500">({item.nama_pemilik})</span>
-                      </div>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
-                        {item.waktu} • {item.lantai}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-bold text-pasar-700">
-                        Rp {Number(item.tarif).toLocaleString("id-ID")}
+              sessionScans.map((item) => (
+                <div
+                  key={item.id}
+                  className="px-3.5 py-2.5 flex items-center justify-between hover:bg-emerald-50/30 text-xs transition-colors"
+                >
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-emerald-950 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 text-[11px]">
+                        {item.kode_kios}
                       </span>
-                      <span className="block text-[10px] text-emerald-600 font-semibold">
-                        LUNAS
-                      </span>
+                      <span className="font-medium text-slate-800">{item.nama_pemilik}</span>
                     </div>
+                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                      {item.waktu} • {item.lantai}
+                    </p>
                   </div>
-                ))}
-              </div>
+
+                  <div className="text-right">
+                    <span className="font-mono font-bold text-emerald-900 text-xs block">
+                      Rp {Number(item.tarif).toLocaleString("id-ID")}
+                    </span>
+                    <span className="text-[10px] font-mono font-semibold text-emerald-700">
+                      LUNAS
+                    </span>
+                  </div>
+                </div>
+              ))
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </main>
 
-      {/* MODAL HASIL SCAN & KONFIRMASI RETRIBUSI */}
+      {/* MODAL VERIFIKASI RETRIBUSI - DIGITAL RECEIPT STYLE */}
       {scanResult && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl relative animate-in fade-in zoom-in duration-150">
+        <div className="fixed inset-0 z-50 bg-emerald-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-5 shadow-2xl relative border border-emerald-300">
             <button
               onClick={() => setScanResult(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1"
+              className="absolute top-3.5 right-3.5 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
 
-            {/* Header Modal */}
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 mb-2">
-                <ShieldCheck className="h-7 w-7" />
+            {/* Header Struk */}
+            <div className="text-center pb-3 border-b-2 border-dashed border-emerald-200">
+              <div className="inline-flex items-center gap-1 text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-800 mb-1">
+                <ShieldCheck className="h-4 w-4 text-emerald-700" />
+                Tanda Tangan HMAC Sah
               </div>
-              <h3 className="text-lg font-bold text-gray-900">
-                QR Code Kios Terverifikasi
+              <h3 className="text-sm font-bold text-slate-900 uppercase">
+                Struk Verifikasi Lapak Pedagang
               </h3>
-              <p className="text-xs text-gray-500">
-                Tanda tangan kriptografi HMAC-SHA256 Asli &amp; Sah
+              <p className="text-[10px] font-mono text-slate-500">
+                Sistem e-Retribusi Pasar Cicalengka
               </p>
             </div>
 
             {/* Rincian Kios */}
-            <div className="my-4 bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-2 text-xs">
-              <div className="flex justify-between items-center pb-2 border-b border-gray-200">
-                <span className="text-gray-500">Kode Kios:</span>
-                <span className="font-mono font-bold text-base text-gray-900 bg-white px-2 py-0.5 rounded border border-gray-200">
+            <div className="my-3 space-y-2 text-xs">
+              <div className="flex justify-between items-center py-1 border-b border-emerald-100">
+                <span className="text-slate-500 text-[11px]">Kode Lapak:</span>
+                <span className="font-mono font-bold text-sm text-emerald-950 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                   {scanResult.kode_kios}
                 </span>
               </div>
 
-              <div className="flex justify-between">
-                <span className="text-gray-500">Nama Pedagang:</span>
-                <span className="font-bold text-gray-900">{scanResult.nama_pemilik}</span>
+              <div className="flex justify-between py-0.5">
+                <span className="text-slate-500 text-[11px]">Pedagang:</span>
+                <span className="font-semibold text-slate-900">{scanResult.nama_pemilik}</span>
               </div>
 
-              <div className="flex justify-between">
-                <span className="text-gray-500">Jenis Dagangan:</span>
-                <span className="text-gray-800">{scanResult.jenis_dagangan}</span>
+              <div className="flex justify-between py-0.5">
+                <span className="text-slate-500 text-[11px]">Komoditas:</span>
+                <span className="text-slate-800">{scanResult.jenis_dagangan}</span>
               </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Zona / Lantai:</span>
-                {scanResult.is_basement ? (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800">
-                    Basement (Area Blindspot)
-                  </span>
-                ) : (
-                  <span className="font-semibold text-gray-800">
-                    {scanResult.lantai}
-                  </span>
-                )}
-              </div>
-
-              {scanResult.is_basement && (
-                <div className="p-2 rounded-lg bg-blue-50/70 border border-blue-200 text-[11px] text-blue-700">
-                  ℹ️ Lapak Basement: Sinyal GPS satelit dibypass otomatis pada Fase 5.
-                </div>
-              )}
-
-              {/* Data Sensor GPS Saat Scan */}
-              <div className="pt-2 border-t border-gray-200 space-y-1">
-                <span className="font-semibold text-gray-700 block">
-                  Sensor GPS Saat Pindai:
+              <div className="flex justify-between py-0.5 items-center">
+                <span className="text-slate-500 text-[11px]">Sektor / Zona:</span>
+                <span className="font-mono text-[11px] font-semibold text-slate-800">
+                  {scanResult.lantai} {scanResult.is_basement ? "(Blindspot)" : ""}
                 </span>
-                {scannedGps ? (
-                  <div className="text-[11px] font-mono text-gray-600 bg-white p-2 rounded border border-gray-100">
-                    <div>
-                      Titik: {scannedGps.latitude.toFixed(6)}, {scannedGps.longitude.toFixed(6)}
-                    </div>
-                    <div>Akurasi Satelit: ± {scannedGps.accuracy}m</div>
-                  </div>
-                ) : (
-                  <div className="text-[11px] text-amber-600 italic">
-                    GPS tidak terdeteksi saat pemindaian
-                  </div>
-                )}
               </div>
 
-              {/* Tarif Retribusi */}
-              <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-sm">
-                <span className="font-semibold text-gray-700">Tarif Retribusi:</span>
-                <span className="text-lg font-bold text-pasar-700">
+              {/* Tagihan Final */}
+              <div className="pt-2 border-t-2 border-dashed border-emerald-200 flex justify-between items-baseline">
+                <span className="text-xs font-bold text-emerald-900 uppercase">Tarif Wajib:</span>
+                <span className="text-2xl font-black text-emerald-800 font-mono">
                   Rp {Number(scanResult.tarif).toLocaleString("id-ID")}
                 </span>
               </div>
             </div>
 
-            {/* Tombol Aksi */}
-            <div className="flex gap-2">
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-1">
               <Button
                 variant="outline"
                 size="md"
                 className="flex-1"
-                disabled={isProcessing}
-                onClick={() => {
-                  setScanResult(null);
-                  setCurrentQrToken("");
-                }}
+                onClick={() => setScanResult(null)}
               >
-                Scan Ulang
+                Batal
               </Button>
               <Button
-                variant="primary"
+                variant="gov"
                 size="md"
                 icon={CheckCircle2}
-                className="flex-1"
-                disabled={isProcessing}
+                isLoading={isProcessing}
+                className="flex-2 font-bold tracking-tight"
                 onClick={handleConfirmPayment}
               >
-                {isProcessing ? "Memproses Setoran..." : "Konfirmasi Lunas"}
+                SAHKAN &amp; SETORKAN
               </Button>
             </div>
           </div>
