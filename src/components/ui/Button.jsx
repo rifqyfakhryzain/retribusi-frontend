@@ -2,11 +2,7 @@ import { Loader2 } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 /**
- * Reusable Button Component
- * @param {string} variant 
- * @param {string} size 
- * @param {boolean} isLoading 
- * @param {React.ReactNode} icon 
+ * Reusable Button Component - Institutional & Utilitarian with Green Accent
  */
 export default function Button({
   children,
@@ -21,21 +17,23 @@ export default function Button({
 }) {
   const variants = {
     primary:
-      "bg-pasar-600 hover:bg-pasar-700 active:bg-pasar-800 text-white shadow-sm focus:ring-pasar-500",
+      "bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white shadow-xs focus:ring-emerald-700 border border-emerald-900",
+    gov:
+      "bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white shadow-xs focus:ring-emerald-700 border border-emerald-900",
     secondary:
-      "bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 focus:ring-gray-400",
+      "bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-900 border border-emerald-200 focus:ring-emerald-300",
     danger:
-      "bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-sm focus:ring-red-500",
+      "bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-xs focus:ring-red-500 border border-red-700",
     outline:
-      "border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 focus:ring-pasar-500",
+      "border border-slate-300 bg-white hover:bg-emerald-50/50 hover:border-emerald-300 text-slate-700 hover:text-emerald-900 focus:ring-emerald-400",
     ghost:
-      "bg-transparent hover:bg-gray-100 text-gray-700 focus:ring-gray-300",
+      "bg-transparent hover:bg-emerald-50 text-slate-700 hover:text-emerald-900 focus:ring-emerald-300",
   };
 
   const sizes = {
-    sm: "px-3 py-1.5 text-xs font-medium gap-1.5",
-    md: "px-4 py-2.5 text-sm font-semibold gap-2",
-    lg: "px-6 py-3.5 text-base font-semibold gap-2.5",
+    sm: "px-2.5 py-1.5 text-xs font-medium gap-1.5",
+    md: "px-3.5 py-2 text-xs font-semibold gap-2",
+    lg: "px-5 py-2.5 text-sm font-semibold gap-2.5",
   };
 
   return (
@@ -43,8 +41,8 @@ export default function Button({
       type={type}
       disabled={disabled || isLoading}
       className={cn(
-        "inline-flex items-center justify-center rounded-lg transition-all duration-150 select-none",
-        "focus:outline-none focus:ring-2 focus:ring-offset-2",
+        "inline-flex items-center justify-center rounded-md transition-all duration-100 select-none cursor-pointer",
+        "focus:outline-none focus:ring-2 focus:ring-offset-1 active:scale-[0.99]",
         "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
         variants[variant],
         sizes[size],
@@ -54,12 +52,12 @@ export default function Button({
     >
       {isLoading ? (
         <>
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
           <span>Memproses...</span>
         </>
       ) : (
         <>
-          {Icon && <Icon className="h-4 w-4 shrink-0" />}
+          {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
           {children}
         </>
       )}
