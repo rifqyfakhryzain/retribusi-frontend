@@ -2,14 +2,14 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { PASAR_CICALENGKA_POLYGON, PASAR_CENTER } from "../../utils/geofence";
-import { MapPin, Navigation, Maximize2 } from "lucide-react";
+import { Navigation, Maximize2 } from "lucide-react";
 
 /**
  * Komponen Peta Radar Lokasi untuk Layar HP Petugas Lapangan
+ * Desain: Institutional GovTech Radar
  */
 export default function OfficerRadarMap({
   location,
-  accuracyQuality,
   isAllowed,
 }) {
   const mapContainerRef = useRef(null);
@@ -17,12 +17,10 @@ export default function OfficerRadarMap({
   const markerRef = useRef(null);
   const accuracyCircleRef = useRef(null);
 
-  // Inisialisasi Peta Leaflet
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
-      // Buat instance peta dengan pusat Pasar Cicalengka
       const map = L.map(mapContainerRef.current, {
         center: [PASAR_CENTER.latitude, PASAR_CENTER.longitude],
         zoom: 16,
@@ -30,25 +28,18 @@ export default function OfficerRadarMap({
         attributionControl: false,
       });
 
-      // Basemap OpenStreetMap
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
       }).addTo(map);
 
-      // Gambar Batas Poligon Gedung Pasar Cicalengka
-      const marketPolygon = L.polygon(PASAR_CICALENGKA_POLYGON, {
-        color: "#059669",
-        weight: 2,
+      // Batas Poligon Pasar Cicalengka (Garis Hijau Emerald Tegas)
+      L.polygon(PASAR_CICALENGKA_POLYGON, {
+        color: "#047857",
+        weight: 2.5,
         fillColor: "#10b981",
-        fillOpacity: 0.25,
-        dashArray: "4, 6",
+        fillOpacity: 0.22,
+        dashArray: "4, 4",
       }).addTo(map);
-
-      marketPolygon.bindTooltip("Batas Pasar Cicalengka", {
-        permanent: false,
-        direction: "center",
-        className: "text-[11px] font-semibold text-emerald-800 bg-white/90 px-2 py-0.5 rounded shadow-sm border border-emerald-200",
-      });
 
       mapInstanceRef.current = map;
     }
@@ -61,57 +52,46 @@ export default function OfficerRadarMap({
     };
   }, []);
 
-  // Sinkronisasi Posisi GPS Petugas Saat Bergerak
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
     if (location && location.latitude && location.longitude) {
       const latLng = [location.latitude, location.longitude];
+      const pinColor = isAllowed ? "#047857" : "#dc2626";
 
-      // Custom Pulsing DivIcon untuk Marker Petugas
-      const pinColor = isAllowed ? "#10b981" : "#ef4444";
       const officerIcon = L.divIcon({
         className: "custom-officer-pin",
         html: `
-          <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px;">
-            <div style="position: absolute; width: 26px; height: 26px; border-radius: 9999px; background-color: ${pinColor}; opacity: 0.35; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-            <div style="position: relative; width: 14px; height: 14px; border-radius: 9999px; background-color: ${pinColor}; border: 2.5px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
+          <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px;">
+            <div style="position: absolute; width: 20px; height: 20px; border-radius: 9999px; background-color: ${pinColor}; opacity: 0.35;"></div>
+            <div style="position: relative; width: 12px; height: 12px; border-radius: 9999px; background-color: ${pinColor}; border: 2px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.4);"></div>
           </div>
         `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
       });
 
-      // Hapus marker lama jika ada
       if (markerRef.current) {
         markerRef.current.setLatLng(latLng);
         markerRef.current.setIcon(officerIcon);
       } else {
-        markerRef.current = L.marker(latLng, { icon: officerIcon })
-          .addTo(map)
-          .bindTooltip("Posisi Anda Saat Ini", {
-            direction: "top",
-            offset: [0, -10],
-            className: "text-[11px] font-bold text-gray-800 px-2 py-0.5 rounded shadow-sm border border-gray-200",
-          });
+        markerRef.current = L.marker(latLng, { icon: officerIcon }).addTo(map);
       }
 
-      // Gambar / perbarui lingkaran akurasi satelit
       if (accuracyCircleRef.current) {
         accuracyCircleRef.current.setLatLng(latLng);
         accuracyCircleRef.current.setRadius(location.accuracy || 10);
       } else {
         accuracyCircleRef.current = L.circle(latLng, {
           radius: location.accuracy || 10,
-          color: isAllowed ? "#10b981" : "#ef4444",
-          fillColor: isAllowed ? "#10b981" : "#ef4444",
+          color: isAllowed ? "#047857" : "#dc2626",
+          fillColor: isAllowed ? "#047857" : "#dc2626",
           fillOpacity: 0.12,
           weight: 1,
         }).addTo(map);
       }
 
-      // Geser kamera peta dengan animasi halus ke titik petugas
       map.setView(latLng, 17, { animate: true });
     }
   }, [location, isAllowed]);
@@ -137,40 +117,32 @@ export default function OfficerRadarMap({
   };
 
   return (
-    <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-gray-100">
-      {/* Wadah Peta Leaflet */}
-      <div ref={mapContainerRef} className="h-48 w-full z-0" />
+    <div className="relative rounded border border-emerald-300 overflow-hidden bg-slate-100">
+      <div ref={mapContainerRef} className="h-40 w-full z-0" />
 
-      {/* Floating Action Controls */}
-      <div className="absolute top-2.5 right-2.5 z-10 flex flex-col gap-1.5">
+      {/* Control Buttons */}
+      <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
         <button
           type="button"
           onClick={handleCenterToOfficer}
           title="Fokus ke Posisi Saya"
-          className="p-1.5 bg-white/95 backdrop-blur-sm rounded-lg shadow-md border border-gray-200 text-gray-700 hover:text-pasar-700 hover:bg-pasar-50 transition-colors cursor-pointer"
+          className="p-1.5 bg-white rounded border border-emerald-200 text-emerald-900 shadow-xs cursor-pointer hover:bg-emerald-50 transition-colors"
         >
-          <Navigation className="h-4 w-4" />
+          <Navigation className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           onClick={handleCenterToMarket}
-          title="Fokus ke Pasar Cicalengka"
-          className="p-1.5 bg-white/95 backdrop-blur-sm rounded-lg shadow-md border border-gray-200 text-gray-700 hover:text-pasar-700 hover:bg-pasar-50 transition-colors cursor-pointer"
+          title="Fokus ke Pasar"
+          className="p-1.5 bg-white rounded border border-emerald-200 text-emerald-900 shadow-xs cursor-pointer hover:bg-emerald-50 transition-colors"
         >
-          <Maximize2 className="h-4 w-4" />
+          <Maximize2 className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      {/* Mini Legend Overlay */}
-      <div className="absolute bottom-2 left-2 z-10 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-md text-[10px] font-medium text-gray-700 shadow border border-gray-200 flex items-center gap-2">
-        <div className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-          <span>Batas Pasar</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-          <span>Posisi Anda</span>
-        </div>
+      {/* Mini Status Tag */}
+      <div className="absolute bottom-1.5 left-1.5 z-10 bg-emerald-800/95 text-white border border-emerald-600 px-2 py-0.5 rounded text-[10px] font-mono shadow-sm">
+        Perimeter Geofence: {isAllowed ? "DALAM PERIMETER" : "LUAR RADIUS"}
       </div>
     </div>
   );
