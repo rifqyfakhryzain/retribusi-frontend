@@ -30,19 +30,23 @@ export const retribusiService = {
 
   /**
    * Mengambil seluruh log transaksi untuk Dasbor Monitoring Real-Time (Admin UPTD)
+   * @param {Object} [params] - { tanggal, limit }
    * @returns {Promise<Object>}
    */
-  async getAllTransactions() {
-    const response = await api.get("/retribusi/semua");
+  async getAllTransactions(params = {}) {
+    const response = await api.get("/retribusi/semua", { params });
     return response.data;
   },
 
   /**
    * Mengambil statistik ringkasan harian penagihan
+   * @param {string} [tanggal] - Format YYYY-MM-DD
    * @returns {Promise<Object>}
    */
-  async getStatistikHariIni() {
-    const response = await api.get("/retribusi/statistik");
+  async getStatistikHariIni(tanggal) {
+    const response = await api.get("/retribusi/statistik", {
+      params: tanggal ? { tanggal } : {},
+    });
     return response.data;
   },
 };
