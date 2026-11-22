@@ -4,7 +4,7 @@ export function Card({ className, children, ...props }) {
   return (
     <div
       className={cn(
-        "bg-white rounded-xl border border-gray-200/80 shadow-sm overflow-hidden",
+        "bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden",
         className
       )}
       {...props}
@@ -16,7 +16,10 @@ export function Card({ className, children, ...props }) {
 
 export function CardHeader({ className, children, ...props }) {
   return (
-    <div className={cn("px-6 py-5 border-b border-gray-100", className)} {...props}>
+    <div
+      className={cn("px-5 py-3.5 border-b border-emerald-100 bg-emerald-50/50", className)}
+      {...props}
+    >
       {children}
     </div>
   );
@@ -25,7 +28,7 @@ export function CardHeader({ className, children, ...props }) {
 export function CardTitle({ className, children, ...props }) {
   return (
     <h3
-      className={cn("text-lg font-semibold text-gray-900 leading-none tracking-tight", className)}
+      className={cn("text-sm font-bold text-slate-900 tracking-tight", className)}
       {...props}
     >
       {children}
@@ -35,20 +38,23 @@ export function CardTitle({ className, children, ...props }) {
 
 export function CardDescription({ className, children, ...props }) {
   return (
-    <p className={cn("text-sm text-gray-500 mt-1.5", className)} {...props}>
+    <p className={cn("text-xs text-slate-500 mt-0.5", className)} {...props}>
       {children}
     </p>
   );
 }
 
 export function CardContent({ className, children, ...props }) {
-  return <div className={cn("p-6", className)} {...props}>{children}</div>;
+  return <div className={cn("p-5", className)} {...props}>{children}</div>;
 }
 
 export function CardFooter({ className, children, ...props }) {
   return (
     <div
-      className={cn("px-6 py-4 bg-gray-50/70 border-t border-gray-100 flex items-center", className)}
+      className={cn(
+        "px-5 py-3 bg-emerald-50/30 border-t border-emerald-100 flex items-center justify-between text-xs",
+        className
+      )}
       {...props}
     >
       {children}
