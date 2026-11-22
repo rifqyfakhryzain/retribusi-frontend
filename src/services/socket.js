@@ -2,6 +2,7 @@ import { io } from "socket.io-client";
 
 /**
  * Socket.io Client Instance untuk Sinkronisasi Real-Time Dasbor UPTD
+ * Menggunakan mode WebSocket murni dengan fallback polling dan reconnect otomatis tanpa henti.
  */
 const getSocketUrl = () => {
   const apiUrl = import.meta.env.VITE_API_BASE_URL || "/api";
@@ -15,9 +16,11 @@ const getSocketUrl = () => {
 export const socket = io(getSocketUrl(), {
   autoConnect: true,
   reconnection: true,
-  reconnectionAttempts: 15,
+  reconnectionAttempts: Infinity, // Terus mencoba menyambung kembali jika koneksi terputus
   reconnectionDelay: 1000,
-  transports: ["websocket", "polling"],
+  reconnectionDelayMax: 5000,
+  timeout: 10000,
+  transports: ["websocket", "polling"], // Mengutamakan WebSocket langsung agar terhindar dari handshake reset
 });
 
 export default socket;
