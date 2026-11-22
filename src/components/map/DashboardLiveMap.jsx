@@ -2,13 +2,19 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { PASAR_CICALENGKA_POLYGON, PASAR_CENTER } from "../../utils/geofence";
-import { Layers, Navigation } from "lucide-react";
+import { Layers, Navigation, Calendar } from "lucide-react";
 
 /**
  * Komponen Peta Interaktif Spasial untuk Dasbor Monitoring Admin UPTD
  * Desain: Enterprise GovTech Control Room (Nuansa Hijau Pasar Cicalengka)
+ * Mendukung filter harian (Hari Ini, Kemarin, atau Tanggal Spesifik)
  */
-export default function DashboardLiveMap({ transactions = [] }) {
+export default function DashboardLiveMap({
+  transactions = [],
+  selectedDate,
+  isToday = true,
+  formattedDateText = "",
+}) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersLayerRef = useRef(null);
@@ -24,7 +30,8 @@ export default function DashboardLiveMap({ transactions = [] }) {
       });
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
       }).addTo(map);
 
@@ -39,7 +46,8 @@ export default function DashboardLiveMap({ transactions = [] }) {
       marketPolygon.bindTooltip("Kawasan Resmi Gedung Pasar Cicalengka (UPTD)", {
         permanent: true,
         direction: "center",
-        className: "bg-emerald-800 text-white font-mono text-[11px] font-bold px-2 py-0.5 rounded border border-emerald-600 shadow-md",
+        className:
+          "bg-emerald-800 text-white font-mono text-[11px] font-bold px-2 py-0.5 rounded border border-emerald-600 shadow-md",
       });
 
       markersLayerRef.current = L.layerGroup().addTo(map);
@@ -62,13 +70,16 @@ export default function DashboardLiveMap({ transactions = [] }) {
     markersLayer.clearLayers();
     const bounds = L.latLngBounds(PASAR_CICALENGKA_POLYGON);
 
+    let validPinCount = 0;
+
     transactions.forEach((trx) => {
       if (!trx.latitude || !trx.longitude) return;
+      validPinCount++;
 
       const latLng = [trx.latitude, trx.longitude];
       bounds.extend(latLng);
 
-      let pinColor = "#059669"; 
+      let pinColor = "#059669";
       let badgeText = "DALAM KAWASAN";
       let statusColor = "#047857";
 
@@ -134,8 +145,12 @@ export default function DashboardLiveMap({ transactions = [] }) {
         .addTo(markersLayer);
     });
 
-    if (transactions.length > 0) {
-      map.fitBounds(bounds, { padding: [30, 30], maxZoom: 17 });
+    if (validPinCount > 0) {
+      map.fitBounds(bounds, { padding: [35, 35], maxZoom: 17 });
+    } else {
+      map.setView([PASAR_CENTER.latitude, PASAR_CENTER.longitude], 16, {
+        animate: true,
+      });
     }
   }, [transactions]);
 
@@ -152,10 +167,17 @@ export default function DashboardLiveMap({ transactions = [] }) {
   return (
     <div className="rounded-lg border border-emerald-200 bg-white shadow-sm overflow-hidden flex flex-col h-full">
       {/* Header Toolbar */}
-      <div className="px-4 py-2.5 bg-emerald-50/70 border-b border-emerald-200 flex items-center justify-between text-xs">
+      <div className="px-4 py-2.5 bg-emerald-50/70 border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2 text-emerald-950 font-semibold">
           <Layers className="h-4 w-4 text-emerald-700" />
-          <span>Sebaran Spasial Penagihan (Batas Kawasan Pasar)</span>
+          <span>Sebaran Spasial Penagihan</span>
+          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+            {transactions.length} Titik
+          </span>
+          <span className="hidden md:inline-flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded bg-white text-slate-600 border border-slate-200">
+            <Calendar className="h-2.5 w-2.5 text-emerald-600" />
+            {isToday ? "Hari Ini" : formattedDateText || selectedDate}
+          </span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -170,7 +192,7 @@ export default function DashboardLiveMap({ transactions = [] }) {
             </span>
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-red-600 inline-block"></span>
-                Luar Kawasan
+              Luar Kawasan
             </span>
           </div>
 
@@ -185,8 +207,19 @@ export default function DashboardLiveMap({ transactions = [] }) {
         </div>
       </div>
 
-      {/* Map Container */}
-      <div ref={mapContainerRef} className="h-96 w-full z-0 flex-1 min-h-[360px]" />
+      {/* Map Container with Empty State Overlay */}
+      <div className="relative flex-1 min-h-[360px]">
+        <div ref={mapContainerRef} className="h-96 w-full z-0 min-h-[360px]" />
+        {transactions.length === 0 && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none bg-white/95 backdrop-blur-xs px-3.5 py-1.5 rounded-full border border-slate-200 shadow-md text-xs font-mono text-slate-600 flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-slate-400" />
+            <span>
+              Tidak ada titik penagihan spasial pada{" "}
+              {isToday ? "hari ini" : formattedDateText || selectedDate}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

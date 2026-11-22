@@ -30,11 +30,88 @@ import {
   Store,
   Radio,
   FileSpreadsheet,
+  Calendar,
+  CalendarDays,
+  History,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
 } from "lucide-react";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("overview"); // "overview" | "kios"
+
+  // Helper Format Tanggal Lokal (WIB)
+  const getTodayString = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const getYesterdayString = () => {
+    const date = new Date();
+    date.setDate(date.getDate() - 1);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const formatTanggalIndo = (dateStr) => {
+    if (!dateStr) return "";
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const formatTanggalSingkat = (dateStr) => {
+    if (!dateStr) return "";
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  // State Filter Periode Tanggal Penarikan (Default: Hari Ini)
+  const [selectedDate, setSelectedDate] = useState(getTodayString());
+  const isToday = selectedDate === getTodayString();
+  const isYesterday = selectedDate === getYesterdayString();
+
+  // Handler Navigasi Hari Sebelumnya & Berikutnya
+  const handlePrevDay = () => {
+    const [y, m, d] = selectedDate.split("-").map(Number);
+    const prev = new Date(y, m - 1, d);
+    prev.setDate(prev.getDate() - 1);
+    const newY = prev.getFullYear();
+    const newM = String(prev.getMonth() + 1).padStart(2, "0");
+    const newD = String(prev.getDate()).padStart(2, "0");
+    setSelectedDate(`${newY}-${newM}-${newD}`);
+  };
+
+  const handleNextDay = () => {
+    const [y, m, d] = selectedDate.split("-").map(Number);
+    const next = new Date(y, m - 1, d);
+    next.setDate(next.getDate() + 1);
+    const todayStr = getTodayString();
+    const newY = next.getFullYear();
+    const newM = String(next.getMonth() + 1).padStart(2, "0");
+    const newD = String(next.getDate()).padStart(2, "0");
+    const nextStr = `${newY}-${newM}-${newD}`;
+    if (nextStr <= todayStr) {
+      setSelectedDate(nextStr);
+    }
+  };
 
   // State Data Kios (Fase 3)
   const [kiosList, setKiosList] = useState([]);
@@ -88,17 +165,17 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const fetchMonitoringData = useCallback(async (isSilent = false) => {
+  const fetchMonitoringData = useCallback(async (isSilent = false, targetDate = selectedDate) => {
     if (!isSilent) setIsLoadingMonitoring(true);
     setMonitoringError("");
     try {
       const [statsRes, transRes] = await Promise.all([
-        retribusiService.getStatistikHariIni(),
-        retribusiService.getAllTransactions(),
+        retribusiService.getStatistikHariIni(targetDate),
+        retribusiService.getAllTransactions({ tanggal: targetDate }),
       ]);
 
       if (statsRes?.data) setStats(statsRes.data);
-      if (transRes?.data) setTransactions(transRes.data);
+      if (transRes?.data) setTransactions(transRes.data || []);
     } catch (err) {
       if (!isSilent) {
         setMonitoringError(
@@ -108,21 +185,17 @@ export default function DashboardPage() {
     } finally {
       if (!isSilent) setIsLoadingMonitoring(false);
     }
-  }, []);
+  }, [selectedDate]);
 
   // Handler Sinkronisasi Lengkap (Tombol Sinkronisasi Ulang)
   const handleManualSync = async () => {
     setIsSyncing(true);
     setSyncFeedback("");
     try {
-      // 1. Hubungkan ulang WebSocket jika sedang offline / terputus
       if (!socket.connected) {
         socket.connect();
       }
-
-      // 2. Muat data kios dan monitoring secara paralel
-      await Promise.all([fetchKios(), fetchMonitoringData(false)]);
-
+      await Promise.all([fetchKios(), fetchMonitoringData(false, selectedDate)]);
       setSyncFeedback(`Tersinkronisasi ${new Date().toLocaleTimeString("id-ID")}`);
       setTimeout(() => setSyncFeedback(""), 3500);
     } catch (err) {
@@ -132,11 +205,15 @@ export default function DashboardPage() {
     }
   };
 
+  // Muat data saat selectedDate berubah
+  useEffect(() => {
+    fetchMonitoringData(false, selectedDate);
+  }, [selectedDate, fetchMonitoringData]);
+
+  // Lifecycle WebSocket & Data Kios
   useEffect(() => {
     fetchKios();
-    fetchMonitoringData();
 
-    // Pastikan koneksi Socket.io selalu aktif
     if (!socket.connected) {
       socket.connect();
     } else {
@@ -165,20 +242,26 @@ export default function DashboardPage() {
 
       console.log("[Socket.io] Real-time transaksi baru diterima:", newTrx.kode_kios);
 
-      // Perbarui tabel log seketika (mencegah duplikasi id)
-      setTransactions((prev) => {
-        const alreadyExists = prev.some((t) => t.id === newTrx.id);
-        if (alreadyExists) return prev;
-        return [newTrx, ...prev];
-      });
+      const todayStr = getTodayString();
+      const isCurrentlyToday = selectedDate === todayStr;
 
-      // Perbarui statistik KPI
-      setStats((prev) => ({
-        ...prev,
-        total_transaksi_lunas: (prev.total_transaksi_lunas || 0) + 1,
-        total_nominal_terkumpul:
-          (prev.total_nominal_terkumpul || 0) + Number(newTrx.nominal || 0),
-      }));
+      // Jika admin sedang melihat hari ini, perbarui log tabel & KPI seketika
+      if (isCurrentlyToday) {
+        setTransactions((prev) => {
+          const alreadyExists = prev.some((t) => t.id === newTrx.id);
+          if (alreadyExists) return prev;
+          return [newTrx, ...prev];
+        });
+
+        setStats((prev) => ({
+          ...prev,
+          total_transaksi_lunas: (prev.total_transaksi_lunas || 0) + 1,
+          total_nominal_terkumpul:
+            (prev.total_nominal_terkumpul || 0) + Number(newTrx.nominal || 0),
+        }));
+
+        fetchMonitoringData(true, todayStr);
+      }
 
       // Tampilkan banner notifikasi kilat di dasbor
       setRealtimeNotification({
@@ -188,26 +271,27 @@ export default function DashboardPage() {
           newTrx.nominal
         ).toLocaleString("id-ID")} [${newTrx.is_basement_bypass ? "Basement Bypass" : "Geofence Sah"}]`,
         time: new Date().toLocaleTimeString("id-ID"),
+        isTodayView: isCurrentlyToday,
       });
-
-      // Sinkronisasi background ringan untuk memastikan agregasi server sinkron
-      fetchMonitoringData(true);
     };
 
     const handleFraudTerdeteksi = (payload) => {
-      setStats((prev) => ({
-        ...prev,
-        total_fraud_ditolak: (prev.total_fraud_ditolak || 0) + 1,
-      }));
+      const todayStr = getTodayString();
+      if (selectedDate === todayStr) {
+        setStats((prev) => ({
+          ...prev,
+          total_fraud_ditolak: (prev.total_fraud_ditolak || 0) + 1,
+        }));
+        fetchMonitoringData(true, todayStr);
+      }
 
       setRealtimeNotification({
         type: "FRAUD",
         title: "PERINGATAN AUDIT SPASIAL",
         message: payload.message || "Upaya penagihan di luar radius pasar diblokir!",
         time: new Date().toLocaleTimeString("id-ID"),
+        isTodayView: selectedDate === todayStr,
       });
-
-      fetchMonitoringData(true);
     };
 
     socket.on("connect", handleConnect);
@@ -216,9 +300,11 @@ export default function DashboardPage() {
     socket.on("transaksi_baru", handleTransaksiBaru);
     socket.on("fraud_terdeteksi", handleFraudTerdeteksi);
 
-    // 🛡️ Heartbeat Polling Fallback: Jika koneksi WebSocket terganggu, tetap sinkron tiap 12 detik
+    // 🛡️ Heartbeat Polling Fallback (Hanya refresh otomatis jika di mode Hari Ini)
     const heartbeatInterval = setInterval(() => {
-      fetchMonitoringData(true);
+      if (selectedDate === getTodayString()) {
+        fetchMonitoringData(true, selectedDate);
+      }
     }, 12000);
 
     return () => {
@@ -229,7 +315,7 @@ export default function DashboardPage() {
       socket.off("transaksi_baru", handleTransaksiBaru);
       socket.off("fraud_terdeteksi", handleFraudTerdeteksi);
     };
-  }, [fetchKios, fetchMonitoringData]);
+  }, [fetchKios, fetchMonitoringData, selectedDate]);
 
   const handleCreateKios = async (e) => {
     e.preventDefault();
@@ -317,38 +403,8 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3.5 text-xs font-mono">
-          {/* Socket Status Pill - Interaktif & Bisa Diklik untuk Sambung Ulang */}
-          {/* <button
-            type="button"
-            onClick={() => {
-              if (!socket.connected) {
-                socket.connect();
-              }
-            }}
-            title={
-              isSocketConnected
-                ? "Koneksi Engine WebSocket Aktif"
-                : "Koneksi terputus. Klik untuk menyambung ulang"
-            }
-            className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-semibold transition-all cursor-pointer ${
-              isSocketConnected
-                ? "bg-emerald-900/90 border-emerald-600 text-emerald-100"
-                : "bg-red-950/90 border-red-500 text-red-200 hover:bg-red-900 animate-pulse"
-            }`}
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                isSocketConnected ? "bg-emerald-300" : "bg-red-400"
-              }`}
-            />
-            <span>
-              ENGINE: {isSocketConnected ? "ONLINE (LIVE)" : "OFFLINE (KLIK HUBUNGKAN)"}
-            </span>
-          </button> */}
-
           <div className="text-right hidden sm:block text-[11px] border-l border-emerald-700 pl-3 text-emerald-100">
             <span className="text-white font-semibold block">{user?.nama}</span>
-            {/* <span className="text-emerald-200">ADMIN ID: {user?.username}</span> */}
           </div>
 
           <Button
@@ -428,7 +484,7 @@ export default function DashboardPage() {
                 : "bg-red-50 border-red-300 text-red-950"
             }`}
           >
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <span className="font-mono font-bold text-[11px] px-1.5 py-0.5 rounded bg-white border border-current">
                 {realtimeNotification.title}
               </span>
@@ -436,10 +492,22 @@ export default function DashboardPage() {
               <span className="text-[10px] font-mono text-slate-500">
                 ({realtimeNotification.time})
               </span>
+              {!realtimeNotification.isTodayView && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate(getTodayString());
+                    setRealtimeNotification(null);
+                  }}
+                  className="px-2 py-0.5 rounded bg-emerald-700 text-white font-bold text-[10px] hover:bg-emerald-800 transition-colors cursor-pointer"
+                >
+                  Beralih ke Hari Ini &rarr;
+                </button>
+              )}
             </div>
             <button
               onClick={() => setRealtimeNotification(null)}
-              className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+              className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer ml-2"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -457,12 +525,125 @@ export default function DashboardPage() {
               />
             )}
 
+            {/* 🗓️ Institutional Date Filter Toolbar - Kontrol Penarikan Harian & Riwayat */}
+            <div className="bg-white rounded-lg border border-emerald-200 p-3 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              {/* Presets & Navigation */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1 bg-emerald-50/70 p-1 rounded-lg border border-emerald-200">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(getTodayString())}
+                    className={`px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isToday
+                        ? "bg-emerald-800 text-white shadow-xs font-bold"
+                        : "text-emerald-900 hover:bg-emerald-100"
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        isToday ? "bg-emerald-300 animate-pulse" : "bg-emerald-600"
+                      }`}
+                    />
+                    <span>Hari Ini</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDate(getYesterdayString())}
+                    className={`px-3 py-1.5 rounded text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isYesterday
+                        ? "bg-emerald-800 text-white shadow-xs font-bold"
+                        : "text-emerald-900 hover:bg-emerald-100"
+                    }`}
+                  >
+                    <History className="h-3 w-3" />
+                    <span>Kemarin</span>
+                  </button>
+                </div>
+
+                {/* Day Stepper Arrows */}
+                <div className="flex items-center border border-emerald-200 rounded overflow-hidden bg-white">
+                  <button
+                    type="button"
+                    onClick={handlePrevDay}
+                    title="Mundur 1 Hari"
+                    className="p-1.5 text-emerald-800 hover:bg-emerald-50 active:bg-emerald-100 transition-colors border-r border-emerald-200 cursor-pointer"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextDay}
+                    disabled={isToday}
+                    title="Maju 1 Hari"
+                    className="p-1.5 text-emerald-800 hover:bg-emerald-50 active:bg-emerald-100 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Custom Date Input */}
+                <div className="flex items-center gap-1.5">
+                  <label
+                    htmlFor="dashboard-date-picker"
+                    className="text-xs text-slate-600 font-medium flex items-center gap-1"
+                  >
+                    <Calendar className="h-3.5 w-3.5 text-emerald-700" />
+                    <span className="hidden sm:inline">Pilih Tanggal:</span>
+                  </label>
+                  <input
+                    id="dashboard-date-picker"
+                    type="date"
+                    value={selectedDate}
+                    max={getTodayString()}
+                    onChange={(e) => {
+                      if (e.target.value) setSelectedDate(e.target.value);
+                    }}
+                    className="px-2.5 py-1 text-xs border border-emerald-300 rounded font-mono font-bold text-emerald-950 focus:outline-none focus:ring-1 focus:ring-emerald-700 bg-white cursor-pointer shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              {/* Status Banner Info */}
+              <div className="flex items-center justify-between md:justify-end gap-2 text-xs">
+                <div className="text-right">
+                  <div className="font-bold text-slate-800 flex items-center gap-1.5 md:justify-end">
+                    <CalendarDays className="h-3.5 w-3.5 text-emerald-700" />
+                    <span>{formatTanggalIndo(selectedDate)}</span>
+                  </div>
+                  <div className="text-[10px] font-mono">
+                    {isToday ? (
+                      <span className="text-emerald-700 font-semibold flex items-center gap-1 md:justify-end">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />
+                        Mode Penarikan Hari Ini (Live Monitoring)
+                      </span>
+                    ) : (
+                      <span className="text-amber-800 font-semibold flex items-center gap-1 md:justify-end">
+                        Mode Arsip Data Riwayat
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDate(getTodayString())}
+                          className="ml-1 text-emerald-700 underline hover:text-emerald-900 cursor-pointer font-bold"
+                        >
+                          (Beralih ke Hari Ini)
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* High-Density KPI Executive Strip - Beraksen Hijau Zamrud & Mint */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {/* Metric 1: Total Penerimaan Retribusi */}
               <div className="p-3.5 bg-white rounded-lg border border-slate-200 border-t-3 border-t-emerald-700 shadow-xs">
                 <div className="flex items-center justify-between text-slate-500 text-[11px] font-mono uppercase font-semibold">
-                  <span>Realisasi Setoran Hari Ini</span>
+                  <span>
+                    {isToday
+                      ? "Realisasi Setoran Hari Ini"
+                      : `Realisasi Setoran (${formatTanggalSingkat(selectedDate)})`}
+                  </span>
                   <div className="h-6 w-6 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200">
                     <DollarSign className="h-3.5 w-3.5" />
                   </div>
@@ -481,7 +662,11 @@ export default function DashboardPage() {
               {/* Metric 2: Kepatuhan Lapak */}
               <div className="p-3.5 bg-white rounded-lg border border-slate-200 border-t-3 border-t-emerald-700 shadow-xs">
                 <div className="flex items-center justify-between text-slate-500 text-[11px] font-mono uppercase font-semibold">
-                  <span>Rasio Kepatuhan Lapak</span>
+                  <span>
+                    {isToday
+                      ? "Rasio Kepatuhan Lapak"
+                      : `Kepatuhan (${formatTanggalSingkat(selectedDate)})`}
+                  </span>
                   <div className="h-6 w-6 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200">
                     <Store className="h-3.5 w-3.5" />
                   </div>
@@ -503,7 +688,11 @@ export default function DashboardPage() {
               {/* Metric 3: Audit Anti-Fraud */}
               <div className="p-3.5 bg-white rounded-lg border border-slate-200 border-t-3 border-t-emerald-700 shadow-xs">
                 <div className="flex items-center justify-between text-slate-500 text-[11px] font-mono uppercase font-semibold">
-                  <span>Audit Integritas (Anti-Pungli)</span>
+                  <span>
+                    {isToday
+                      ? "Audit Integritas (Anti-Pungli)"
+                      : `Audit Spasial (${formatTanggalSingkat(selectedDate)})`}
+                  </span>
                   <div className="h-6 w-6 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200">
                     <ShieldCheck className="h-3.5 w-3.5" />
                   </div>
@@ -529,28 +718,42 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Metric 4: Sinkronisasi WebSockets */}
+              {/* Metric 4: Sinkronisasi WebSockets / Status Riwayat */}
               <div className="p-3.5 bg-white rounded-lg border border-slate-200 border-t-3 border-t-emerald-700 shadow-xs">
                 <div className="flex items-center justify-between text-slate-500 text-[11px] font-mono uppercase font-semibold">
-                  <span>Protokol Real-Time</span>
+                  <span>{isToday ? "Protokol Real-Time" : "Status Pengawasan"}</span>
                   <div className="h-6 w-6 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200">
-                    <Radio className="h-3.5 w-3.5" />
+                    {isToday ? (
+                      <Radio className="h-3.5 w-3.5" />
+                    ) : (
+                      <Clock className="h-3.5 w-3.5" />
+                    )}
                   </div>
                 </div>
                 <div className="text-xl font-bold font-mono text-slate-900 mt-1 flex items-center gap-2">
                   <span
                     className={`h-2.5 w-2.5 rounded-full ${
-                      isSocketConnected ? "bg-emerald-500" : "bg-red-500"
+                      isToday
+                        ? isSocketConnected
+                          ? "bg-emerald-500"
+                          : "bg-red-500"
+                        : "bg-amber-500"
                     }`}
                   />
                   <span className="text-sm uppercase tracking-wide text-emerald-950 font-bold">
-                    {isSocketConnected ? "SOCKET.IO AKTIF" : "TERPUTUS"}
+                    {isToday
+                      ? isSocketConnected
+                        ? "SOCKET.IO AKTIF"
+                        : "TERPUTUS"
+                      : "MODE ARSIP RIWAYAT"}
                   </span>
                 </div>
                 <div className="mt-1.5 text-[11px] text-slate-500 font-mono">
-                  {isSocketConnected
-                    ? "Latensi siaran: < 20 milidetik"
-                    : "Klik status untuk sambung ulang"}
+                  {isToday
+                    ? isSocketConnected
+                      ? "Latensi siaran: < 20 milidetik"
+                      : "Klik sinkronisasi untuk sambung ulang"
+                    : `Meninjau data ${formatTanggalSingkat(selectedDate)}`}
                 </div>
               </div>
             </div>
@@ -559,7 +762,12 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
               {/* Peta Spasial Pasar Cicalengka (7 Kolom) */}
               <div className="lg:col-span-7 h-full">
-                <DashboardLiveMap transactions={transactions} />
+                <DashboardLiveMap
+                  transactions={transactions}
+                  selectedDate={selectedDate}
+                  isToday={isToday}
+                  formattedDateText={formatTanggalIndo(selectedDate)}
+                />
               </div>
 
               {/* Feed Aktivitas Penagihan Masuk (5 Kolom) */}
@@ -567,7 +775,11 @@ export default function DashboardPage() {
                 <div className="px-4 py-2.5 bg-emerald-800 text-white border-b border-emerald-700 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1.5 font-bold tracking-wide">
                     <Activity className="h-3.5 w-3.5 text-emerald-300" />
-                    <span>LOG PENARIKAN REAL-TIME</span>
+                    <span>
+                      {isToday
+                        ? "LOG PENARIKAN REAL-TIME"
+                        : `LOG PENARIKAN (${formatTanggalSingkat(selectedDate)})`}
+                    </span>
                   </div>
                   <span className="text-[10px] font-mono text-emerald-100 bg-emerald-900 px-2 py-0.5 rounded border border-emerald-600 font-bold">
                     {transactions.length} Entri Masuk
@@ -577,7 +789,9 @@ export default function DashboardPage() {
                 <div className="divide-y divide-slate-100 flex-1 overflow-y-auto">
                   {transactions.length === 0 ? (
                     <div className="p-8 text-center text-xs font-mono text-slate-400">
-                      Menunggu penagihan dari petugas lapangan...
+                      {isToday
+                        ? "Menunggu penagihan dari petugas lapangan hari ini..."
+                        : `Tidak ada catatan penagihan pada ${formatTanggalIndo(selectedDate)}.`}
                     </div>
                   ) : (
                     transactions.slice(0, 15).map((trx) => (
@@ -628,15 +842,15 @@ export default function DashboardPage() {
 
             {/* Tabel Lengkap Audit Transaksi (Financial Ledger Style) */}
             <div className="rounded-lg border border-emerald-200 bg-white shadow-xs overflow-hidden">
-              <div className="px-4 py-2.5 bg-emerald-800 text-white border-b border-emerald-700 flex items-center justify-between text-xs">
+              <div className="px-4 py-2.5 bg-emerald-800 text-white border-b border-emerald-700 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-2">
                   <FileSpreadsheet className="h-4 w-4 text-emerald-300" />
                   <span className="font-bold uppercase tracking-tight text-white">
-                    Buku Pembantu Penerimaan Retribusi Harian
+                    Buku Pembantu Penerimaan Retribusi — {formatTanggalIndo(selectedDate)}
                   </span>
                 </div>
                 <span className="text-[11px] font-mono text-emerald-200">
-                  Data Terverifikasi Kriptografi &amp; Geofencing
+                  {transactions.length} Data Terverifikasi Kriptografi &amp; Geofencing
                 </span>
               </div>
 
@@ -660,7 +874,8 @@ export default function DashboardPage() {
                     {transactions.length === 0 ? (
                       <tr>
                         <td colSpan={10} className="px-4 py-8 text-center text-slate-400">
-                          Belum ada transaksi tercatat pada pembukuan hari ini.
+                          Belum ada transaksi tercatat pada pembukuan{" "}
+                          {formatTanggalIndo(selectedDate)}.
                         </td>
                       </tr>
                     ) : (
@@ -806,10 +1021,6 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                      {/* <span className="text-[11px] font-mono text-emerald-700 font-semibold flex items-center gap-1">
-                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                        HMAC-SHA256
-                      </span> */}
                       <Button
                         variant="outline"
                         size="sm"
