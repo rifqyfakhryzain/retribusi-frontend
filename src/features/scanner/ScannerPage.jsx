@@ -19,6 +19,7 @@ import {
   Clock,
   X,
   Radio,
+  CalendarDays,
 } from "lucide-react";
 
 export default function ScannerPage() {
@@ -38,8 +39,21 @@ export default function ScannerPage() {
   const [fraudWarning, setFraudWarning] = useState("");
   const [successPaymentMessage, setSuccessPaymentMessage] = useState("");
 
-  // Riwayat Kios yang Berhasil Dipindai Sesi Ini
+  // Riwayat Kios yang Berhasil Dipindai Sesi Ini (Khusus Hari Ini)
   const [sessionScans, setSessionScans] = useState([]);
+
+  // Format Hari Ini & Agregasi Kas Harian Petugas
+  const todayFormatted = new Date().toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const totalNominalHariIni = sessionScans.reduce(
+    (acc, curr) => acc + (Number(curr.tarif) || 0),
+    0
+  );
 
   // Evaluasi Geofencing Status Keberadaan Petugas
   const locationStatus = evaluateOfficerLocation(
@@ -369,22 +383,42 @@ export default function ScannerPage() {
           </div>
         </div>
 
-        {/* Log Riwayat Penagihan Sesi Ini */}
+        {/* Log Riwayat Penagihan Khusus Hari Ini Saja */}
         <div className="rounded-lg border border-emerald-200 bg-white shadow-xs overflow-hidden">
-          <div className="px-3.5 py-2.5 bg-emerald-50/70 border-b border-emerald-200 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-1.5 font-bold text-emerald-950">
-              <Clock className="h-4 w-4 text-emerald-700" />
-              <span>REKAPITULASI PENAGIHAN SESI INI</span>
+          <div className="px-3.5 py-2.5 bg-emerald-800 text-white flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5 font-bold tracking-wide">
+              <CalendarDays className="h-4 w-4 text-emerald-300" />
+              <span>REKAPITULASI PENAGIHAN HARI INI</span>
             </div>
-            <span className="font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">
-              {sessionScans.length} Kios
+            <span className="font-mono font-bold text-[10px] px-2 py-0.5 rounded bg-emerald-900 text-emerald-100 border border-emerald-600">
+              {todayFormatted}
             </span>
           </div>
 
-          <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto">
+          {/* Mini Ringkasan Kas Shift Hari Ini */}
+          <div className="grid grid-cols-2 gap-2 p-2.5 bg-emerald-50/60 border-b border-emerald-100 text-xs font-mono">
+            <div className="p-2 bg-white rounded border border-emerald-200 shadow-2xs">
+              <span className="text-[10px] text-slate-500 block uppercase font-semibold">
+                Lapak Lunas (Hari Ini)
+              </span>
+              <span className="text-base font-bold text-emerald-950">
+                {sessionScans.length} Kios
+              </span>
+            </div>
+            <div className="p-2 bg-white rounded border border-emerald-200 shadow-2xs text-right">
+              <span className="text-[10px] text-slate-500 block uppercase font-semibold">
+                Total Setoran Tunai
+              </span>
+              <span className="text-base font-bold text-emerald-950">
+                Rp {totalNominalHariIni.toLocaleString("id-ID")}
+              </span>
+            </div>
+          </div>
+
+          <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto">
             {sessionScans.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-400 font-mono">
-                Belum ada transaksi pada sesi ini. Pindai stiker pedagang untuk mencatat retribusi.
+                Belum ada transaksi penagihan pada hari ini. Pindai stiker lapak pedagang untuk mencatat retribusi.
               </div>
             ) : (
               sessionScans.map((item) => (
@@ -400,7 +434,7 @@ export default function ScannerPage() {
                       <span className="font-medium text-slate-800">{item.nama_pemilik}</span>
                     </div>
                     <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                      {item.waktu} • {item.lantai}
+                      {item.waktu} WIB • {item.lantai}
                     </p>
                   </div>
 
@@ -408,13 +442,23 @@ export default function ScannerPage() {
                     <span className="font-mono font-bold text-emerald-900 text-xs block">
                       Rp {Number(item.tarif).toLocaleString("id-ID")}
                     </span>
-                    <span className="text-[10px] font-mono font-semibold text-emerald-700">
-                      LUNAS
+                    <span
+                      className={`inline-block font-mono text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                        item.is_basement
+                          ? "bg-blue-100 text-blue-800 border border-blue-200"
+                          : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                      }`}
+                    >
+                      {item.is_basement ? "BASEMENT" : "LUNAS"}
                     </span>
                   </div>
                 </div>
               ))
             )}
+          </div>
+
+          <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-100 text-[10px] font-mono text-slate-500 text-center">
+            SOP UPTD: Rekapitulasi terbatas pada shift hari berjalan (hari ini saja).
           </div>
         </div>
       </main>
