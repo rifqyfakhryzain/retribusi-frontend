@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { User, Lock, Building2, ShieldCheck, Zap } from "lucide-react";
+import {
+  User,
+  Lock,
+  Building2,
+  ShieldCheck,
+  MapPin,
+  Activity,
+  ArrowRight,
+  Zap,
+} from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
@@ -15,7 +24,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Jika sudah terotentikasi, alihkan langsung sesuai role
+  // Jika sudah login, alihkan langsung sesuai role
   if (isAuthenticated) {
     return <Navigate to={role === "ADMIN" ? "/dashboard" : "/scanner"} replace />;
   }
@@ -60,113 +69,219 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50/60 via-slate-50 to-emerald-50/40 flex flex-col justify-between p-4 font-sans text-slate-900">
-      <div className="flex-1 flex items-center justify-center py-8">
-        <div className="w-full max-w-sm space-y-4">
-          {/* Header Identitas Institusi Resmi (Nuansa Hijau UPTD) */}
-          <div className="text-center space-y-1.5">
-            <div className="inline-flex items-center justify-center h-12 w-12 rounded-lg bg-emerald-800 text-white font-mono font-bold text-base border border-emerald-600 shadow-sm mb-1">
-              <Building2 className="h-6 w-6 text-emerald-100" />
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row font-sans text-slate-900">
+      {/* ========================================================= */}
+      {/* Panel Kiri: Identitas Resmi & Pilar Keamanan (Desktop 55%) */}
+      {/* ========================================================= */}
+      <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] bg-emerald-950 text-emerald-50 flex-col justify-between p-12 xl:p-16 border-r border-emerald-900 relative overflow-hidden">
+        {/* Subtle geometric line overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#064e3b15_1px,transparent_1px),linear-gradient(to_bottom,#064e3b15_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+
+        {/* Header Instansi */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-11 w-11 rounded-lg bg-emerald-900 text-emerald-300 border border-emerald-800 flex items-center justify-center">
+              <Building2 className="h-6 w-6 stroke-[1.75]" />
             </div>
             <div>
-              <p className="text-[10px] font-mono tracking-wider font-bold text-emerald-800 uppercase">
-                PT Niaga Perkasa
+              <p className="text-xs font-mono font-semibold tracking-wider text-emerald-400 uppercase">
+                UPTD Pasar Cicalengka
               </p>
-              <h1 className="text-base font-bold uppercase tracking-tight text-slate-900">
-                PASAR CICALENGKA
-              </h1>
+              <p className="text-sm text-emerald-200/80 font-medium">
+                Dinas Perindustrian dan Perdagangan
+              </p>
             </div>
           </div>
 
-          {/* Form Card */}
-          <div className="bg-white rounded-lg border-t-4 border-t-emerald-700 border-x border-b border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 bg-emerald-50/70 border-b border-emerald-100">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
-                Otentikasi Pengguna
+          <div className="max-w-lg mt-8">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-emerald-900/80 text-emerald-200 border border-emerald-800 mb-4">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Sistem Anti-Pungli & Keamanan Terintegrasi
+            </div>
+            <h1 className="text-3xl xl:text-4xl font-bold text-white tracking-tight leading-tight">
+              Sistem Monitoring Retribusi Pasar Cicalengka
+            </h1>
+            <p className="text-sm text-emerald-200/90 mt-3 leading-relaxed">
+              Platform tata kelola penerimaan retribusi harian berbasis validasi spasial satelit
+              dan token kriptografis HMAC-SHA256 untuk transparansi operasional pasar rakyat.
+            </p>
+          </div>
+        </div>
+
+        {/* 3 Pilar Arsitektur Keamanan */}
+        <div className="relative z-10 my-10 space-y-4 max-w-lg">
+          <div className="p-4 rounded-lg bg-emerald-900/40 border border-emerald-800/80 flex items-start gap-3.5">
+            <div className="h-8 w-8 rounded-md bg-emerald-800/80 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-700/60 mt-0.5">
+              <ShieldCheck className="h-4 w-4 stroke-[1.75]" />
+            </div>
+            <div>
+              <h2 className="text-xs font-semibold text-white tracking-wide">
+                Kriptografi QR HMAC-SHA256
               </h2>
-              <p className="text-[11px] text-slate-600 mt-0.5">
-                Masukkan kredensial akun Petugas atau Administrator UPTD
+              <p className="text-xs text-emerald-300/80 mt-0.5 leading-relaxed">
+                Setiap stiker lapak ditandatangani secara matematis untuk mencegah pemalsuan,
+                duplikasi, dan tiket fiktif.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-lg bg-emerald-900/40 border border-emerald-800/80 flex items-start gap-3.5">
+            <div className="h-8 w-8 rounded-md bg-emerald-800/80 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-700/60 mt-0.5">
+              <MapPin className="h-4 w-4 stroke-[1.75]" />
+            </div>
+            <div>
+              <h2 className="text-xs font-semibold text-white tracking-wide">
+                Geofencing Ray-Casting & Audit Satelit
+              </h2>
+              <p className="text-xs text-emerald-300/80 mt-0.5 leading-relaxed">
+                Verifikasi perimeter poligon fisik pasar secara otomatis guna menjamin transaksi
+                hanya disahkan di lokasi lapak pedagang.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-lg bg-emerald-900/40 border border-emerald-800/80 flex items-start gap-3.5">
+            <div className="h-8 w-8 rounded-md bg-emerald-800/80 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-700/60 mt-0.5">
+              <Activity className="h-4 w-4 stroke-[1.75]" />
+            </div>
+            <div>
+              <h2 className="text-xs font-semibold text-white tracking-wide">
+                Audit Real-Time WebSockets
+              </h2>
+              <p className="text-xs text-emerald-300/80 mt-0.5 leading-relaxed">
+                Pembaruan buku kas seketika (&lt; 20ms) dan pendeteksian anomali transaksi
+                secara otomatis ke konsol pimpinan UPTD.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Panel Kiri */}
+        <div className="relative z-10 pt-6 border-t border-emerald-900 text-xs font-mono text-emerald-400/80 flex items-center justify-between">
+          <span>Versi Sistem 2.1 (GovTech Edition)</span>
+          <span>Hak Cipta UPTD Pasar Cicalengka</span>
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* Panel Kanan: Form Otentikasi Pengguna                     */}
+      {/* ========================================================= */}
+      <div className="flex-1 flex flex-col justify-between p-6 sm:p-10 lg:p-16 bg-white lg:bg-slate-50 min-h-screen lg:min-h-0">
+        {/* Mobile Header Branding */}
+        <div className="lg:hidden mb-6 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-emerald-950 text-emerald-300 flex items-center justify-center border border-emerald-800">
+            <Building2 className="h-5 w-5 stroke-[1.75]" />
+          </div>
+          <div>
+            <h1 className="text-xs font-mono font-bold uppercase text-emerald-800">
+              UPTD PASAR CICALENGKA
+            </h1>
+            <p className="text-sm font-semibold text-slate-900">
+              Sistem Monitoring Retribusi
+            </p>
+          </div>
+        </div>
+
+        {/* Centered Form Wrapper */}
+        <div className="flex-1 flex items-center justify-center py-4 sm:py-8">
+          <div className="w-full max-w-sm bg-white rounded-lg border border-slate-200 lg:shadow-xs p-6 sm:p-8">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                Masuk ke Sistem
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Gunakan kredensial resmi Administrator UPTD atau Petugas Lapangan.
               </p>
             </div>
 
-            <div className="p-5">
-              <form onSubmit={handleSubmit} className="space-y-3.5">
-                {errorMsg && (
-                  <Alert
-                    variant="error"
-                    message={errorMsg}
-                    onClose={() => setErrorMsg("")}
-                  />
-                )}
-
-                <Input
-                  label="Username"
-                  id="username"
-                  name="username"
-                  placeholder="ID Username Anda"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  icon={User}
-                  autoComplete="username"
-                  autoFocus
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {errorMsg && (
+                <Alert
+                  variant="error"
+                  message={errorMsg}
+                  onClose={() => setErrorMsg("")}
                 />
+              )}
 
-                <Input
-                  label="Password"
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="Kata sandi"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  icon={Lock}
-                  autoComplete="current-password"
-                />
+              <Input
+                label="Username / ID Petugas"
+                id="username"
+                name="username"
+                placeholder="Masukkan username ID"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                icon={User}
+                autoComplete="username"
+                autoFocus
+                required
+              />
 
-                <Button
-                  type="submit"
-                  variant="gov"
-                  className="w-full mt-2 font-bold tracking-tight text-xs py-2.5"
-                  isLoading={loading}
-                >
-                  MASUK KE SISTEM
-                </Button>
-              </form>
-            </div>
+              <Input
+                label="Kata Sandi"
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Masukkan kata sandi"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                icon={Lock}
+                autoComplete="current-password"
+                required
+              />
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="w-full font-semibold text-sm h-11"
+                isLoading={loading}
+              >
+                Masuk ke Aplikasi
+              </Button>
+            </form>
 
             {/* Quick Demo Credentials */}
-            <div className="px-5 py-3 bg-emerald-50/40 border-t border-emerald-100 text-xs">
-              <div className="flex items-center gap-1 text-[10px] font-mono font-bold text-emerald-800 uppercase tracking-wider mb-2">
-                <Zap className="h-3 w-3 text-emerald-600" />
-                <span>Kredensial Pengujian Cepat:</span>
+            <div className="border-t border-slate-200 pt-5 mt-6">
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-2.5">
+                <Zap className="h-3.5 w-3.5 text-emerald-600 stroke-[1.75]" />
+                <span className="font-medium">Akses Cepat Pengujian:</span>
               </div>
-              <div className="grid grid-cols-2 gap-1.5 font-mono text-[11px]">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setQuickCredentials("admin_cicalengka", "admincicalengka")}
-                  className="p-2 bg-white border border-emerald-200 rounded text-emerald-950 hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-left cursor-pointer shadow-2xs"
+                  className="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-left hover:bg-emerald-50/50 hover:border-emerald-300 transition-colors cursor-pointer group"
                 >
-                  <span className="font-bold block text-emerald-800">ADMIN</span>
-                  <span className="text-[10px] text-slate-500">admin_cicalengka</span>
+                  <span className="text-xs font-semibold text-slate-800 block group-hover:text-emerald-800">
+                    Admin UPTD
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-500 block">
+                    admin_cicalengka
+                  </span>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setQuickCredentials("petugas", "petugas123")}
-                  className="p-2 bg-white border border-emerald-200 rounded text-emerald-950 hover:bg-emerald-50 hover:border-emerald-300 transition-colors text-left cursor-pointer shadow-2xs"
+                  className="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-left hover:bg-emerald-50/50 hover:border-emerald-300 transition-colors cursor-pointer group"
                 >
-                  <span className="font-bold block text-emerald-800">PETUGAS</span>
-                  <span className="text-[10px] text-slate-500">petugas</span>
+                  <span className="text-xs font-semibold text-slate-800 block group-hover:text-emerald-800">
+                    Petugas Lapangan
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-500 block">
+                    petugas
+                  </span>
                 </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Footer */}
-      <footer className="text-center text-[11px] font-mono text-slate-500 py-2">
-        E-Retribusi PT Bangun Niaga Perkasa
-      </footer>
+        {/* Footer */}
+        <div className="text-center text-xs text-slate-400 py-3">
+          Sistem Monitoring e-Retribusi &bull; UPTD Pasar Cicalengka
+        </div>
+      </div>
     </div>
   );
 }
