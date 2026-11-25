@@ -83,11 +83,7 @@ export default function DashboardLiveMap({
       let badgeText = "DALAM KAWASAN";
       let statusColor = "#047857";
 
-      if (trx.is_basement_bypass) {
-        pinColor = "#2563eb"; // Blue
-        badgeText = "BASEMENT";
-        statusColor = "#1d4ed8";
-      } else if (trx.status === "DITOLAK" || !trx.is_geofence_valid) {
+      if (trx.status === "DITOLAK" || !trx.is_geofence_valid) {
         pinColor = "#dc2626"; // Red
         badgeText = "LUAR RADIUS";
         statusColor = "#b91c1c";
@@ -184,15 +180,11 @@ export default function DashboardLiveMap({
           <div className="hidden sm:flex items-center gap-3 text-[11px] text-slate-600 font-medium">
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-600 inline-block"></span>
-              Dalam Kawasan
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-blue-600 inline-block"></span>
-              Lapak Basement
+              Dalam Kawasan (Sah)
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-rose-600 inline-block"></span>
-              Luar Kawasan
+              Luar Kawasan (Fraud)
             </span>
           </div>
 
