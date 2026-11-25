@@ -1,11 +1,15 @@
 import { cn } from "../../utils/cn";
 
+/**
+ * Reusable Flat Card Components
+ * Sesuai aturan Anti-AI-Slop: Flat border 1px border-slate-200, rounded-lg (8px), no heavy drop shadows.
+ */
 export function Card({ className, children, ...props }) {
   return (
     <div
       className={cn(
-        "bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden",
-        className
+        "bg-white rounded-lg border border-slate-200 overflow-hidden",
+        className,
       )}
       {...props}
     >
@@ -17,7 +21,7 @@ export function Card({ className, children, ...props }) {
 export function CardHeader({ className, children, ...props }) {
   return (
     <div
-      className={cn("px-5 py-3.5 border-b border-emerald-100 bg-emerald-50/50", className)}
+      className={cn("px-5 py-4 border-b border-slate-200 bg-white", className)}
       {...props}
     >
       {children}
@@ -28,7 +32,10 @@ export function CardHeader({ className, children, ...props }) {
 export function CardTitle({ className, children, ...props }) {
   return (
     <h3
-      className={cn("text-sm font-bold text-slate-900 tracking-tight", className)}
+      className={cn(
+        "text-sm font-semibold text-slate-900 tracking-tight",
+        className,
+      )}
       {...props}
     >
       {children}
@@ -38,22 +45,26 @@ export function CardTitle({ className, children, ...props }) {
 
 export function CardDescription({ className, children, ...props }) {
   return (
-    <p className={cn("text-xs text-slate-500 mt-0.5", className)} {...props}>
+    <p className={cn("text-xs text-slate-500 mt-1", className)} {...props}>
       {children}
     </p>
   );
 }
 
 export function CardContent({ className, children, ...props }) {
-  return <div className={cn("p-5", className)} {...props}>{children}</div>;
+  return (
+    <div className={cn("p-5", className)} {...props}>
+      {children}
+    </div>
+  );
 }
 
 export function CardFooter({ className, children, ...props }) {
   return (
     <div
       className={cn(
-        "px-5 py-3 bg-emerald-50/30 border-t border-emerald-100 flex items-center justify-between text-xs",
-        className
+        "px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs",
+        className,
       )}
       {...props}
     >
