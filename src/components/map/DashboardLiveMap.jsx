@@ -165,33 +165,33 @@ export default function DashboardLiveMap({
   };
 
   return (
-    <div className="rounded-lg border border-emerald-200 bg-white shadow-sm overflow-hidden flex flex-col h-full">
+    <div className="rounded-lg border border-slate-200 bg-white overflow-hidden flex flex-col h-full">
       {/* Header Toolbar */}
-      <div className="px-4 py-2.5 bg-emerald-50/70 border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-2 text-emerald-950 font-semibold">
-          <Layers className="h-4 w-4 text-emerald-700" />
+      <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2 text-slate-800 font-semibold">
+          <Layers className="h-4 w-4 text-emerald-700 stroke-[1.75]" />
           <span>Sebaran Spasial Penagihan</span>
-          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
             {transactions.length} Titik
           </span>
           <span className="hidden md:inline-flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded bg-white text-slate-600 border border-slate-200">
-            <Calendar className="h-2.5 w-2.5 text-emerald-600" />
+            <Calendar className="h-3 w-3 text-emerald-600 stroke-[1.75]" />
             {isToday ? "Hari Ini" : formattedDateText || selectedDate}
           </span>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-3 text-[11px] text-slate-700 font-medium">
-            <span className="flex items-center gap-1">
+          <div className="hidden sm:flex items-center gap-3 text-[11px] text-slate-600 font-medium">
+            <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-600 inline-block"></span>
               Dalam Kawasan
             </span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-blue-600 inline-block"></span>
               Lapak Basement
             </span>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-red-600 inline-block"></span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-rose-600 inline-block"></span>
               Luar Kawasan
             </span>
           </div>
@@ -199,9 +199,9 @@ export default function DashboardLiveMap({
           <button
             type="button"
             onClick={handleResetView}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-50 transition-colors shadow-2xs text-[11px] font-medium cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs text-xs font-medium cursor-pointer"
           >
-            <Navigation className="h-3 w-3" />
+            <Navigation className="h-3.5 w-3.5 stroke-[1.75]" />
             Pusatkan
           </button>
         </div>
