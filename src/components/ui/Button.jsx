@@ -2,7 +2,8 @@ import { Loader2 } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 /**
- * Reusable Button Component - Institutional & Utilitarian with Green Accent
+ * Reusable Button Component - Modern GovTech (Nuansa Hijau Instansi)
+ * Menggunakan radius presisi 6px (rounded-md), tinggi konsisten, border tipis, dan tanpa shadow mencolok.
  */
 export default function Button({
   children,
@@ -17,23 +18,23 @@ export default function Button({
 }) {
   const variants = {
     primary:
-      "bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white shadow-xs focus:ring-emerald-700 border border-emerald-900",
+      "bg-emerald-700 text-white hover:bg-emerald-800 active:bg-emerald-900 border border-emerald-800 shadow-2xs focus-visible:ring-emerald-600/30",
     gov:
-      "bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white shadow-xs focus:ring-emerald-700 border border-emerald-900",
+      "bg-emerald-700 text-white hover:bg-emerald-800 active:bg-emerald-900 border border-emerald-800 shadow-2xs focus-visible:ring-emerald-600/30",
     secondary:
-      "bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-900 border border-emerald-200 focus:ring-emerald-300",
-    danger:
-      "bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-xs focus:ring-red-500 border border-red-700",
+      "bg-slate-100 text-slate-800 hover:bg-slate-200 active:bg-slate-300 border border-slate-200 focus-visible:ring-slate-400/30",
     outline:
-      "border border-slate-300 bg-white hover:bg-emerald-50/50 hover:border-emerald-300 text-slate-700 hover:text-emerald-900 focus:ring-emerald-400",
+      "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 focus-visible:ring-emerald-600/30 shadow-2xs",
+    danger:
+      "bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 border border-rose-700 shadow-2xs focus-visible:ring-rose-500/30",
     ghost:
-      "bg-transparent hover:bg-emerald-50 text-slate-700 hover:text-emerald-900 focus:ring-emerald-300",
+      "bg-transparent text-slate-700 hover:bg-slate-100 hover:text-slate-900 active:bg-slate-200 focus-visible:ring-slate-400/30",
   };
 
   const sizes = {
-    sm: "px-2.5 py-1.5 text-xs font-medium gap-1.5",
-    md: "px-3.5 py-2 text-xs font-semibold gap-2",
-    lg: "px-5 py-2.5 text-sm font-semibold gap-2.5",
+    sm: "h-8 px-3 text-xs font-medium gap-1.5",
+    md: "h-10 px-4 text-sm font-medium gap-2",
+    lg: "h-11 px-5 text-sm font-semibold gap-2.5",
   };
 
   return (
@@ -41,23 +42,23 @@ export default function Button({
       type={type}
       disabled={disabled || isLoading}
       className={cn(
-        "inline-flex items-center justify-center rounded-md transition-all duration-100 select-none cursor-pointer",
-        "focus:outline-none focus:ring-2 focus:ring-offset-1 active:scale-[0.99]",
+        "inline-flex items-center justify-center rounded-md font-sans transition-colors duration-150 select-none cursor-pointer",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99]",
         "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
-        variants[variant],
-        sizes[size],
+        variants[variant] || variants.primary,
+        sizes[size] || sizes.md,
         className
       )}
       {...props}
     >
       {isLoading ? (
         <>
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin shrink-0" />
           <span>Memproses...</span>
         </>
       ) : (
         <>
-          {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
+          {Icon && <Icon className="h-4 w-4 shrink-0 stroke-[1.75]" />}
           {children}
         </>
       )}
