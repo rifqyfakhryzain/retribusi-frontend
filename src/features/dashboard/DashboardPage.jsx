@@ -18,7 +18,7 @@ import {
   Printer,
   X,
   Store,
-  Radio,
+  Clock,
   Calendar,
   CalendarDays,
   History,
@@ -284,9 +284,7 @@ export default function DashboardPage() {
         title: "SETORAN LAPAK DITERIMA",
         message: `Kios ${newTrx.kode_kios} (${newTrx.nama_pemilik}) telah melunasi Rp ${Number(
           newTrx.nominal,
-        ).toLocaleString(
-          "id-ID",
-        )} [${newTrx.is_basement_bypass ? "Basement Bypass" : "Geofence Valid"}]`,
+        ).toLocaleString("id-ID")}`,
         time: new Date().toLocaleTimeString("id-ID"),
         isTodayView: isCurrentlyToday,
       });
@@ -405,10 +403,20 @@ export default function DashboardPage() {
     (t) => t.status === "DITOLAK" || !t.is_geofence_valid,
   );
 
-  // Jumlah Kios dengan status bypass di transactions
-  const basementBypassCount = transactions.filter(
-    (t) => t.is_basement_bypass,
-  ).length;
+  // Set ID / kode kios yang sudah lunas pada tanggal terpilih
+  const lunasKiosSet = new Set(
+    transactions
+      .filter((t) => t.status === "LUNAS")
+      .map((t) => t.kios_id || t.kode_kios),
+  );
+  const totalLunasCount =
+    lunasKiosSet.size > 0
+      ? lunasKiosSet.size
+      : (stats.total_transaksi_lunas || 0);
+  const belumLunasCount = Math.max(
+    0,
+    (kiosList.length || 0) - totalLunasCount,
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
@@ -825,26 +833,28 @@ export default function DashboardPage() {
                     <Store className="h-4 w-4 text-emerald-700 stroke-[1.75]" />
                   </div>
                   <div className="text-2xl font-semibold text-slate-900 tabular-nums mt-2">
-                    {stats.total_transaksi_lunas || 0}
+                    {totalLunasCount}
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
                     Dari total {kiosList.length || 0} lapak terdaftar
                   </p>
                 </div>
 
-                {/* Metric 3: Bypass Basement */}
+                {/* Metric 3: Kios Belum Lunas */}
                 <div className="bg-white border border-slate-200 rounded-lg p-5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Bypass Basement
+                      Kios Belum Lunas
                     </span>
-                    <Radio className="h-4 w-4 text-amber-600 stroke-[1.75]" />
+                    <Clock className="h-4 w-4 text-amber-600 stroke-[1.75]" />
                   </div>
                   <div className="text-2xl font-semibold text-slate-900 tabular-nums mt-2">
-                    {basementBypassCount}
+                    {belumLunasCount}
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    Bypass nonaktif (semua lantai wajib GPS)
+                    {belumLunasCount === 0
+                      ? "Semua lapak telah lunas"
+                      : `Tersisa dari total ${kiosList.length || 0} lapak`}
                   </p>
                 </div>
 
@@ -937,11 +947,7 @@ export default function DashboardPage() {
                             <span className="font-mono font-semibold text-slate-900 block text-xs tabular-nums">
                               Rp {Number(trx.nominal).toLocaleString("id-ID")}
                             </span>
-                            {trx.is_basement_bypass ? (
-                              <Badge variant="warning" size="sm">
-                                BASEMENT
-                              </Badge>
-                            ) : trx.status === "LUNAS" ? (
+                            {trx.status === "LUNAS" ? (
                               <Badge variant="success" size="sm">
                                 LUNAS
                               </Badge>
@@ -1035,11 +1041,7 @@ export default function DashboardPage() {
                               Rp {Number(trx.nominal).toLocaleString("id-ID")}
                             </td>
                             <td className="py-3 px-4">
-                              {trx.is_basement_bypass ? (
-                                <Badge variant="warning" size="sm">
-                                  Bypass Basement
-                                </Badge>
-                              ) : trx.is_geofence_valid ? (
+                              {trx.is_geofence_valid ? (
                                 <Badge variant="success" size="sm">
                                   GPS Valid (±{Math.round(trx.accuracy || 0)}m)
                                 </Badge>
