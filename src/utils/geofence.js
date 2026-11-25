@@ -126,7 +126,7 @@ export function evaluateOfficerLocation(latitude, longitude, accuracy = 0) {
     status: "OUTSIDE_MARKET",
     isAllowed: false,
     title: "Di Luar Wilayah Pasar Cicalengka",
-    message: `Posisi Anda berjarak ${km} km dari Pasar Cicalengka. Penagihan lapak non-basement akan ditolak.`,
+    message: `Posisi Anda berjarak ${km} km dari Pasar Cicalengka. Penagihan di luar kawasan pasar akan ditolak.`,
     badgeColor: "red",
     distance: Math.round(distToCenter),
   };
