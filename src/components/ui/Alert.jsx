@@ -3,7 +3,7 @@ import { cn } from "../../utils/cn";
 
 /**
  * Reusable Alert Component
- * Digunakan untuk menampilkan feedback response (sukses, validasi error 400, unauthorized 401).
+ * Desain ringkas berbingkai tipis 1px dengan ikon lucide-react 16px (stroke 1.75).
  */
 export default function Alert({
   variant,
@@ -16,24 +16,24 @@ export default function Alert({
 }) {
   const configs = {
     error: {
-      container: "bg-red-50 border-red-200 text-red-800",
+      container: "bg-rose-50 border-rose-200 text-rose-900",
       icon: AlertCircle,
-      iconColor: "text-red-500",
+      iconColor: "text-rose-600",
     },
     success: {
-      container: "bg-green-50 border-green-200 text-green-800",
+      container: "bg-emerald-50 border-emerald-200 text-emerald-900",
       icon: CheckCircle2,
-      iconColor: "text-green-500",
+      iconColor: "text-emerald-600",
     },
     warning: {
-      container: "bg-amber-50 border-amber-200 text-amber-800",
+      container: "bg-amber-50 border-amber-200 text-amber-900",
       icon: AlertTriangle,
-      iconColor: "text-amber-500",
+      iconColor: "text-amber-600",
     },
     info: {
-      container: "bg-blue-50 border-blue-200 text-blue-800",
+      container: "bg-slate-50 border-slate-200 text-slate-800",
       icon: Info,
-      iconColor: "text-blue-500",
+      iconColor: "text-slate-600",
     },
   };
 
@@ -46,23 +46,24 @@ export default function Alert({
     <div
       role="alert"
       className={cn(
-        "flex items-start gap-3 p-3.5 rounded-lg border text-sm transition-all animate-in fade-in duration-200",
+        "flex items-start gap-2.5 p-3 rounded-lg border text-xs leading-relaxed transition-all",
         current.container,
         className
       )}
     >
-      <Icon className={cn("h-5 w-5 shrink-0 mt-0.5", current.iconColor)} />
+      <Icon className={cn("h-4 w-4 shrink-0 mt-0.5 stroke-[1.75]", current.iconColor)} />
       <div className="flex-1">
-        {title && <h4 className="font-semibold mb-0.5">{title}</h4>}
-        <div className="text-sm leading-relaxed">{content}</div>
+        {title && <h4 className="font-semibold text-xs mb-0.5">{title}</h4>}
+        <div>{content}</div>
       </div>
       {onClose && (
         <button
           type="button"
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 -mr-1 -mt-1 p-1 rounded-md"
+          className="text-slate-400 hover:text-slate-600 -mr-1 -mt-1 p-1 rounded cursor-pointer"
+          aria-label="Tutup pemberitahuan"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3.5 w-3.5 stroke-[1.75]" />
         </button>
       )}
     </div>
