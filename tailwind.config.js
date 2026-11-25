@@ -3,31 +3,39 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', "system-ui", "sans-serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
+      },
       colors: {
-        // Deep authoritative institutional emerald tones (Dinas Pasar Sehat Cicalengka)
-        gov: {
-          950: "#022c22",
+        // Semantic aliases for institutional theme
+        brand: {
+          950: "#022c22", // emerald-950
           900: "#064e3b",
           800: "#065f46",
-          700: "#047857",
+          700: "#047857", // emerald-700 primary
           600: "#059669",
           500: "#10b981",
-          400: "#34d399",
           200: "#a7f3d0",
           100: "#d1fae5",
           50: "#ecfdf5",
         },
-        pasar: {
-          50: "#f0fdf4",
-          100: "#dcfce7",
-          200: "#bbf7d0",
-          500: "#10b981",
-          600: "#059669",
-          700: "#047857",
-          800: "#065f46",
-          900: "#064e3b",
-          950: "#022c22",
+      },
+      keyframes: {
+        rowHighlight: {
+          "0%": { backgroundColor: "#ecfdf5" }, // emerald-50
+          "100%": { backgroundColor: "transparent" },
         },
+        scan: {
+          "0%": { top: "6%", opacity: "0" },
+          "15%": { opacity: "1" },
+          "85%": { opacity: "1" },
+          "100%": { top: "92%", opacity: "0" },
+        },
+      },
+      animation: {
+        rowHighlight: "rowHighlight 1.5s ease-out forwards",
+        scan: "scan 2s ease-in-out infinite",
       },
     },
   },
