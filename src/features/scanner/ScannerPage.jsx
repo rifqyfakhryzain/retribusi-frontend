@@ -51,14 +51,14 @@ export default function ScannerPage() {
 
   const totalNominalHariIni = sessionScans.reduce(
     (acc, curr) => acc + (Number(curr.tarif) || 0),
-    0
+    0,
   );
 
   // Evaluasi Geofencing Status Keberadaan Petugas
   const locationStatus = evaluateOfficerLocation(
     location?.latitude,
     location?.longitude,
-    location?.accuracy
+    location?.accuracy,
   );
 
   useEffect(() => {
@@ -196,8 +196,8 @@ export default function ScannerPage() {
 
       setSuccessPaymentMessage(
         `Retribusi ${trx.kode_kios} (Rp ${Number(trx.nominal).toLocaleString(
-          "id-ID"
-        )}) BERHASIL DISAHKAN (${flagInfo})`
+          "id-ID",
+        )}) BERHASIL DISAHKAN (${flagInfo})`,
       );
 
       setScanResult(null);
@@ -219,14 +219,13 @@ export default function ScannerPage() {
 
   // Telemetri Sinyal GPS Indicator
   const gpsAccuracy = location?.accuracy || 0;
-  const gpsDotColor =
-    !location
-      ? "bg-slate-400"
-      : gpsAccuracy <= 10
+  const gpsDotColor = !location
+    ? "bg-slate-400"
+    : gpsAccuracy <= 10
       ? "bg-emerald-400"
       : gpsAccuracy <= 20
-      ? "bg-amber-400"
-      : "bg-rose-400";
+        ? "bg-amber-400"
+        : "bg-rose-400";
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
@@ -244,7 +243,7 @@ export default function ScannerPage() {
                 {user?.nama || "Petugas Lapangan"}
               </h1>
               <p className="text-[10px] text-emerald-200 font-sans leading-none">
-                UPTD Pasar Cicalengka
+                Pasar Cicalengka
               </p>
             </div>
           </div>
@@ -264,7 +263,7 @@ export default function ScannerPage() {
             <button
               type="button"
               onClick={logout}
-              className="text-emerald-200 hover:text-white p-1.5 rounded-md hover:bg-emerald-700 transition-colors cursor-pointer"
+              className="text-red-500 hover:text-white p-1.5 rounded-md hover:bg-emerald-700 transition-colors cursor-pointer"
               title="Keluar"
               aria-label="Keluar"
             >
@@ -300,21 +299,22 @@ export default function ScannerPage() {
           {/* GPS Telemetry & Spasial Banner Card */}
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
             <div className="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    location
-                      ? locationStatus.isAllowed
-                        ? "bg-emerald-600"
-                        : "bg-rose-600"
-                      : "bg-slate-400"
-                  }`}
-                />
-                <span className="text-xs font-semibold text-slate-800 uppercase tracking-wider">
-                  Status Telemetri Spasial
-                </span>
-              </div>
-
+              {
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      location
+                        ? locationStatus.isAllowed
+                          ? "bg-emerald-600"
+                          : "bg-rose-600"
+                        : "bg-slate-400"
+                    }`}
+                  />
+                  <span className="text-xs font-semibold text-slate-800 uppercase tracking-wider">
+                    Status Telemetri Spasial
+                  </span>
+                </div>
+              }
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -332,7 +332,9 @@ export default function ScannerPage() {
                   type="button"
                   onClick={() => setIsRadarExpanded(!isRadarExpanded)}
                   className="text-slate-500 hover:text-slate-700 p-0.5 cursor-pointer"
-                  title={isRadarExpanded ? "Tutup Peta Radar" : "Buka Peta Radar"}
+                  title={
+                    isRadarExpanded ? "Tutup Peta Radar" : "Buka Peta Radar"
+                  }
                 >
                   {isRadarExpanded ? (
                     <ChevronUp className="h-4 w-4" />
@@ -345,10 +347,12 @@ export default function ScannerPage() {
 
             <div className="p-3 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-600 font-medium">Validasi Geofence:</span>
+                <span className="text-slate-600 font-medium">
+                  Validasi Geofence:
+                </span>
                 {locationStatus.isAllowed ? (
                   <Badge variant="success" size="sm">
-                    Dalam Kawasan Pasar (Sah)
+                    Dalam Kawasan Pasar
                   </Badge>
                 ) : (
                   <Badge variant="danger" size="sm">
@@ -360,7 +364,8 @@ export default function ScannerPage() {
               {location ? (
                 <div className="text-[11px] font-mono text-slate-500 flex justify-between tabular-nums pt-1 border-t border-slate-100">
                   <span>
-                    Lat/Lng: {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+                    Lat/Lng: {location.latitude.toFixed(5)},{" "}
+                    {location.longitude.toFixed(5)}
                   </span>
                   <span>Akurasi: ±{Math.round(location.accuracy || 0)}m</span>
                 </div>
@@ -402,7 +407,9 @@ export default function ScannerPage() {
             {/* Caption Koordinat Tipis */}
             {location && (
               <p className="text-[11px] font-mono text-slate-500 text-center tabular-nums pt-1">
-                GPS: {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)} (&plusmn;{Math.round(location.accuracy || 0)}m)
+                GPS: {location.latitude.toFixed(5)},{" "}
+                {location.longitude.toFixed(5)} (&plusmn;
+                {Math.round(location.accuracy || 0)}m)
               </p>
             )}
           </div>
@@ -455,7 +462,9 @@ export default function ScannerPage() {
                         <span className="font-mono font-semibold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[11px] border border-slate-200">
                           {item.kode_kios}
                         </span>
-                        <span className="font-medium text-slate-800">{item.nama_pemilik}</span>
+                        <span className="font-medium text-slate-800">
+                          {item.nama_pemilik}
+                        </span>
                       </div>
                       <p className="text-[10px] text-slate-500 font-mono mt-0.5">
                         {item.waktu} WIB &bull; {item.lantai}
@@ -493,7 +502,6 @@ export default function ScannerPage() {
           onClose={() => setScanResult(null)}
           variant="sheet"
           title="Konfirmasi Pelunasan Retribusi"
-          subtitle="Verifikasi stiker fisik lapak pedagang Pasar Cicalengka"
         >
           <div className="space-y-4">
             {/* Status Geofence / Validasi */}
@@ -515,17 +523,23 @@ export default function ScannerPage() {
 
               <div className="flex justify-between text-xs py-0.5">
                 <span className="text-slate-500">Pedagang:</span>
-                <span className="font-semibold text-slate-900">{scanResult.nama_pemilik}</span>
+                <span className="font-semibold text-slate-900">
+                  {scanResult.nama_pemilik}
+                </span>
               </div>
 
               <div className="flex justify-between text-xs py-0.5">
                 <span className="text-slate-500">Komoditas:</span>
-                <span className="text-slate-700">{scanResult.jenis_dagangan}</span>
+                <span className="text-slate-700">
+                  {scanResult.jenis_dagangan}
+                </span>
               </div>
 
               <div className="flex justify-between text-xs py-0.5">
                 <span className="text-slate-500">Zonasi:</span>
-                <span className="font-mono text-slate-700">{scanResult.lantai}</span>
+                <span className="font-mono text-slate-700">
+                  {scanResult.lantai}
+                </span>
               </div>
             </div>
 
