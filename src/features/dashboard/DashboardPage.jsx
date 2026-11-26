@@ -412,11 +412,8 @@ export default function DashboardPage() {
   const totalLunasCount =
     lunasKiosSet.size > 0
       ? lunasKiosSet.size
-      : (stats.total_transaksi_lunas || 0);
-  const belumLunasCount = Math.max(
-    0,
-    (kiosList.length || 0) - totalLunasCount,
-  );
+      : stats.total_transaksi_lunas || 0;
+  const belumLunasCount = Math.max(0, (kiosList.length || 0) - totalLunasCount);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
@@ -441,10 +438,10 @@ export default function DashboardPage() {
             </div>
             <div>
               <h1 className="text-xs font-bold uppercase tracking-wide text-white leading-tight">
-                UPTD Pasar Cicalengka
+                Pasar Cicalengka
               </h1>
               <p className="text-[10px] text-emerald-200 font-sans leading-none">
-                Monitoring E-Retribusi
+                PT. Bangun Niaga Perkasa
               </p>
             </div>
           </div>
@@ -454,10 +451,10 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-sm font-semibold text-white tracking-tight leading-tight">
                 {activeMenu === "live"
-                  ? "Monitoring Live & Spasial"
+                  ? "Monitoring Live"
                   : activeMenu === "kios"
                     ? "Katalog Kios & Registrasi Stiker QR"
-                    : "Log Audit Spasial & Fraud"}
+                    : "Log Pelanggaran"}
               </h2>
               <p className="text-[11px] text-emerald-200 font-sans">
                 {formatTanggalIndo(selectedDate)}
@@ -618,7 +615,7 @@ export default function DashboardPage() {
                     activeMenu === "fraud" ? "text-rose-600" : "text-slate-400"
                   }`}
                 />
-                <span>Log Audit Fraud</span>
+                <span>Log Pelanggaran</span>
               </div>
               {rejectedTransactions.length > 0 && (
                 <span className="px-1.5 py-0.2 rounded text-[10px] bg-rose-100 text-rose-700 font-mono font-semibold border border-rose-200">
@@ -659,7 +656,7 @@ export default function DashboardPage() {
               className={`p-3.5 rounded-lg border text-xs flex items-center justify-between transition-all ${
                 realtimeNotification.type === "SUCCESS"
                   ? "bg-emerald-50 border-emerald-200 text-emerald-950"
-                  : "bg-rose-50 border-rose-200 border-l-4 border-l-rose-600 text-rose-950"
+                  : "bg-rose-50 border-rose-200 text-rose-950"
               }`}
             >
               <div className="flex flex-wrap items-center gap-2">
@@ -794,11 +791,11 @@ export default function DashboardPage() {
                     <CalendarDays className="h-3.5 w-3.5 text-emerald-700 stroke-[1.75]" />
                     <span>{formatTanggalIndo(selectedDate)}</span>
                   </span>
-                  <span className="text-[11px] font-mono text-slate-500">
+                  {/* <span className="text-[11px] font-mono text-slate-500">
                     {isToday
                       ? "Sesi Operasional Aktif"
                       : "Arsip Riwayat Transaksi"}
-                  </span>
+                  </span> */}
                 </div>
               </div>
 
@@ -820,7 +817,6 @@ export default function DashboardPage() {
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
                     {stats.total_transaksi_lunas || 0} transaksi berhasil
-                    disahkan
                   </p>
                 </div>
 
@@ -862,7 +858,7 @@ export default function DashboardPage() {
                 <div className="bg-white border border-slate-200 rounded-lg p-5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Percobaan Fraud
+                      Pelanggaran
                     </span>
                     <ShieldAlert
                       className={`h-4 w-4 stroke-[1.75] ${
@@ -1189,14 +1185,16 @@ export default function DashboardPage() {
           {/* ========================================================= */}
           {activeMenu === "fraud" && (
             <div className="space-y-4">
-              <div className="bg-rose-50 border border-rose-200 border-l-4 border-l-rose-600 p-4 rounded-lg">
+              <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <ShieldAlert className="h-5 w-5 text-rose-600 shrink-0 mt-0.5 stroke-[1.75]" />
+                  <div className="h-8 w-8 rounded-md bg-slate-100 flex items-center justify-center shrink-0 text-slate-700">
+                    <ShieldAlert className="h-4 w-4 stroke-[1.75]" />
+                  </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-rose-900">
+                    <h3 className="text-sm font-semibold text-slate-900">
                       Audit Spasial &amp; Pencegahan Pungutan Liar
                     </h3>
-                    <p className="text-xs text-rose-800 mt-1 leading-relaxed">
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                       Laporan ini memuat seluruh transaksi yang otomatis
                       dibatalkan atau ditolak oleh sistem akibat koordinat GPS
                       terdeteksi berada di luar batas geofence resmi Pasar
@@ -1226,7 +1224,7 @@ export default function DashboardPage() {
                         <th className="py-3 px-4">Petugas</th>
                         <th className="py-3 px-4">Koordinat GPS</th>
                         <th className="py-3 px-4">Akurasi Satelit</th>
-                        <th className="py-3 px-4 text-center">Status Audit</th>
+                        <th className="py-3 px-4 text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1299,18 +1297,18 @@ export default function DashboardPage() {
         <Modal
           isOpen={Boolean(selectedKios)}
           onClose={() => setSelectedKios(null)}
-          title="Stiker Resmi Lapak Pedagang"
-          subtitle="UPTD Pasar Cicalengka &bull; Dinas Perindustrian dan Perdagangan"
+          title="QR Code Pedagang"
+          subtitle="Pasar Cicalengka"
         >
           <div id="print-sticker-container" className="my-2">
             <div className="border border-slate-300 rounded-lg overflow-hidden bg-white max-w-sm mx-auto">
               {/* Header Stiker Resmi */}
               <div className="bg-emerald-950 text-white py-2.5 px-4 text-center">
-                <span className="text-[10px] font-mono tracking-wider font-semibold text-emerald-300 uppercase block">
-                  UPTD PASAR CICALENGKA
+                <span className="text-[10px] font-mono tracking-wider font-semibold text-white-300 uppercase block">
+                  PT. Bangun Niaga Perkasa
                 </span>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-                  E-RETRIBUSI RESMI — KABUPATEN BANDUNG
+                  PASAR CICALENGKA — KABUPATEN BANDUNG
                 </h4>
               </div>
 
@@ -1338,7 +1336,7 @@ export default function DashboardPage() {
                     {selectedKios.nama_pemilik}
                   </div>
                   <div className="text-[11px] text-slate-500">
-                    {selectedKios.jenis_dagangan} &bull; {selectedKios.lantai}
+                    {selectedKios.jenis_dagangan} - {selectedKios.lantai}
                   </div>
                   <div className="text-xs font-mono font-semibold text-emerald-700 mt-1 tabular-nums">
                     Tarif Retribusi: Rp{" "}
