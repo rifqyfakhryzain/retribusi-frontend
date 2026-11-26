@@ -43,7 +43,7 @@ export default function DashboardLiveMap({
         fillOpacity: 0.2,
       }).addTo(map);
 
-      marketPolygon.bindTooltip("Kawasan Resmi Gedung Pasar Cicalengka (UPTD)", {
+      marketPolygon.bindTooltip("Kawasan Pasar Cicalengka", {
         permanent: true,
         direction: "center",
         className:
@@ -100,11 +100,14 @@ export default function DashboardLiveMap({
         iconAnchor: [12, 12],
       });
 
-      const formattedTime = new Date(trx.created_at).toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
+      const formattedTime = new Date(trx.created_at).toLocaleTimeString(
+        "id-ID",
+        {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        },
+      );
 
       const popupContent = `
         <div style="min-width: 210px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 11px; color: #1e293b;">
@@ -155,7 +158,7 @@ export default function DashboardLiveMap({
       mapInstanceRef.current.setView(
         [PASAR_CENTER.latitude, PASAR_CENTER.longitude],
         16,
-        { animate: true }
+        { animate: true },
       );
     }
   };
@@ -166,7 +169,7 @@ export default function DashboardLiveMap({
       <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2 text-slate-800 font-semibold">
           <Layers className="h-4 w-4 text-emerald-700 stroke-[1.75]" />
-          <span>Sebaran Spasial Penagihan</span>
+          <span>Sebaran Penagihan</span>
           <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
             {transactions.length} Titik
           </span>
@@ -180,11 +183,11 @@ export default function DashboardLiveMap({
           <div className="hidden sm:flex items-center gap-3 text-[11px] text-slate-600 font-medium">
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-600 inline-block"></span>
-              Dalam Kawasan (Sah)
+              Dalam Kawasan
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-rose-600 inline-block"></span>
-              Luar Kawasan (Fraud)
+              Luar Kawasan
             </span>
           </div>
 
