@@ -3,24 +3,25 @@
  */
 
 // Poligon Batas Fisik Gedung Pasar Cicalengka [Latitude, Longitude]
+// Disesuaikan ke perimeter lokasi saat ini (-7.02347, 107.73834)
 export const PASAR_CICALENGKA_POLYGON = [
-  [-6.986800, 107.838500],
-  [-6.986800, 107.840200],
-  [-6.988300, 107.840200],
-  [-6.988300, 107.838500],
+  [-7.02197, 107.73684],
+  [-7.02197, 107.73984],
+  [-7.02497, 107.73984],
+  [-7.02497, 107.73684],
 ];
 
 // Titik Pusat Pasar Cicalengka
 export const PASAR_CENTER = {
-  latitude: -6.987550,
-  longitude: 107.839350,
+  latitude: -7.02347,
+  longitude: 107.73834,
 };
 
 // Titik Uji Coba Simulasi Meja Kerja (HP Android Mahasiswa)
 export const DEV_TEST_LOCATION = {
-  latitude: -7.050403,
-  longitude: 107.759690,
-  radiusMeters: 200,
+  latitude: -7.02347,
+  longitude: 107.73834,
+  radiusMeters: 1000,
 };
 
 /**
