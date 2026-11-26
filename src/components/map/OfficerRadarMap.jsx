@@ -9,10 +9,7 @@ import { Navigation, Maximize2 } from "lucide-react";
  * Menampilkan posisi real-time petugas dengan radar pulsing pin, radius akurasi,
  * dan batas geofence poligon Pasar Cicalengka.
  */
-export default function OfficerRadarMap({
-  location,
-  isAllowed,
-}) {
+export default function OfficerRadarMap({ location, isAllowed }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layerGroupRef = useRef(null);
@@ -107,7 +104,9 @@ export default function OfficerRadarMap({
 
       const marker = L.marker(latLng, { icon: officerIcon });
       marker.bindTooltip(
-        isAllowed ? "Lokasi Petugas (Sah)" : "Lokasi Petugas (Luar Radius)",
+        isAllowed
+          ? "Lokasi Petugas (Dalam Kawasan)"
+          : "Lokasi Petugas (Luar Radius)",
         {
           permanent: true,
           direction: "top",
@@ -115,7 +114,7 @@ export default function OfficerRadarMap({
           className: isAllowed
             ? "bg-emerald-800 text-white font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-600 shadow-sm"
             : "bg-rose-700 text-white font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border border-rose-600 shadow-sm",
-        }
+        },
       );
       layerGroup.addLayer(marker);
 
@@ -130,7 +129,7 @@ export default function OfficerRadarMap({
       mapInstanceRef.current.setView(
         [location.latitude, location.longitude],
         16,
-        { animate: true }
+        { animate: true },
       );
     }
   };
@@ -140,7 +139,7 @@ export default function OfficerRadarMap({
       mapInstanceRef.current.setView(
         [PASAR_CENTER.latitude, PASAR_CENTER.longitude],
         16,
-        { animate: true }
+        { animate: true },
       );
     }
   };
@@ -170,7 +169,7 @@ export default function OfficerRadarMap({
       </div>
 
       {/* Mini Status Tag */}
-      <div
+      {/* <div
         className={`absolute bottom-2 left-2 z-10 px-2.5 py-0.5 rounded text-[10px] font-mono shadow-xs border ${
           isAllowed
             ? "bg-emerald-800 text-white border-emerald-700"
@@ -178,7 +177,7 @@ export default function OfficerRadarMap({
         }`}
       >
         Perimeter Geofence: {isAllowed ? "DALAM PERIMETER" : "LUAR RADIUS"}
-      </div>
+      </div> */}
     </div>
   );
 }
